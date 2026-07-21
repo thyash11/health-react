@@ -1,0 +1,6 @@
+{
+  "name": "Health & Nutrition Tracker",
+  "description": "Comprehensive health, nutrition, and daily habit tracker with interactive weekly/monthly analytics, food library, and quick logging.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
