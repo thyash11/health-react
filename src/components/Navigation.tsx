@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { 
   LayoutDashboard, 
   UtensilsCrossed, 
@@ -7,6 +7,8 @@ import {
   BookOpen, 
   HeartPulse, 
   Calendar,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useTracker } from "../context/TrackerContext";
 import { FormattedDateInput } from "./FormattedDateInput";
@@ -23,6 +25,8 @@ export const Navigation: React.FC<NavigationProps> = ({
   setActiveTab,
 }) => {
   const { selectedDate, setSelectedDate } = useTracker();
+  const navRef = useRef<HTMLElement>(null);
+  const tabRefs = useRef<Partial<Record<TabType, HTMLButtonElement | null>>>({});
 
   const navItems = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -33,8 +37,27 @@ export const Navigation: React.FC<NavigationProps> = ({
     { id: "health", label: "Health & Labs", icon: HeartPulse },
   ] as const;
 
+  const shiftSelectedDate = (days: number) => {
+    const [year, month, day] = selectedDate.split("-").map(Number);
+    const date = new Date(year, month - 1, day);
+    date.setDate(date.getDate() + days);
+    const nextYear = date.getFullYear();
+    const nextMonth = String(date.getMonth() + 1).padStart(2, "0");
+    const nextDay = String(date.getDate()).padStart(2, "0");
+    setSelectedDate(`${nextYear}-${nextMonth}-${nextDay}`);
+  };
+
+  useEffect(() => {
+    const nav = navRef.current;
+    const activeButton = tabRefs.current[activeTab];
+    if (!nav || !activeButton) return;
+
+    const centeredLeft = activeButton.offsetLeft - (nav.clientWidth - activeButton.offsetWidth) / 2;
+    nav.scrollTo({ left: Math.max(0, centeredLeft), behavior: "smooth" });
+  }, [activeTab]);
+
   return (
-    <header className="bg-white text-slate-900 shadow-sm border-b border-slate-200 sticky top-0 z-30">
+    <header className="bg-white text-slate-900 shadow-sm border-b border-slate-200 sticky top-0 z-50">
       {/* Top Banner Bar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between py-3.5 gap-2 sm:gap-3">
@@ -46,11 +69,8 @@ export const Navigation: React.FC<NavigationProps> = ({
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
-                NutriMetric <span className="text-xs px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 font-semibold border border-blue-200">Pro</span>
+                NutriMetric
               </h1>
-              <p className="text-xs text-slate-500 hidden sm:block">
-                Health, Nutrition & Performance Dashboard
-              </p>
             </div>
           </div>
 
@@ -58,27 +78,48 @@ export const Navigation: React.FC<NavigationProps> = ({
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             {/* Selected Date Picker */}
             <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl px-2 sm:px-3 py-1.5 text-xs text-slate-700">
-              <Calendar className="w-3.5 h-3.5 mr-1.5 text-blue-600 shrink-0" />
+              <Calendar className="hidden sm:block w-3.5 h-3.5 mr-1.5 text-blue-600 shrink-0" />
               <span className="font-medium mr-2 text-slate-500 hidden sm:inline">Active Date:</span>
+              <button
+                type="button"
+                onClick={() => shiftSelectedDate(-1)}
+                aria-label="Previous day"
+                title="Previous day"
+                className="mr-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-xs transition-colors hover:bg-blue-50 hover:text-blue-700"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
               <FormattedDateInput
                 value={selectedDate}
                 onChange={setSelectedDate}
                 ariaLabel="Select active date"
                 className="bg-transparent border-none text-slate-900 text-xs font-semibold rounded-md"
               />
+              <button
+                type="button"
+                onClick={() => shiftSelectedDate(1)}
+                aria-label="Next day"
+                title="Next day"
+                className="ml-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-xs transition-colors hover:bg-blue-50 hover:text-blue-700"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
             </div>
 
           </div>
         </div>
 
         {/* Tab Navigation Navigation Bar */}
-        <nav className="flex space-x-1.5 overflow-x-auto scrollbar-none py-2 border-t border-slate-100 text-xs font-medium">
+        <nav ref={navRef} className="flex space-x-1.5 overflow-x-auto scrollbar-none py-2 border-t border-slate-100 text-xs font-medium">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
             return (
               <button
                 key={item.id}
+                ref={(element) => {
+                  tabRefs.current[item.id] = element;
+                }}
                 onClick={() => setActiveTab(item.id as TabType)}
                 className={`flex items-center gap-2 px-3.5 py-2 rounded-xl whitespace-nowrap transition-all ${
                   isActive

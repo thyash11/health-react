@@ -6,9 +6,6 @@ import {
   Droplets, 
   Footprints, 
   Target, 
-  Calendar, 
-  ChevronLeft, 
-  ChevronRight, 
   Clock, 
   AlertTriangle, 
   CheckCircle2, 
@@ -54,16 +51,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const scoreInfo = getScoreColor(summary.score);
 
-  // Date Shift Helpers
-  const shiftDate = (days: number) => {
-    const d = new Date(selectedDate);
-    d.setDate(d.getDate() + days);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    setSelectedDate(`${year}-${month}-${day}`);
-  };
-
   // Recent 10 dates list for summary table
   const uniqueDates = Array.from(
     new Set(dailyLogs.map((l) => l.date))
@@ -72,83 +59,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <div className="space-y-6 pb-12">
       
-      {/* Top Banner: Date Switcher & Day Score */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center space-x-3">
-          <button
-            onClick={() => shiftDate(-1)}
-            className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors"
-            title="Previous Day"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl font-bold text-slate-900">
-                {formatDateForDisplay(selectedDate)}
-              </h2>
-            </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Target: {targets.dailyCalories} kcal • {targets.proteinGrams}g Protein • {targets.fiberGrams}g Fiber
-            </p>
-          </div>
-
-          <button
-            onClick={() => shiftDate(1)}
-            className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors"
-            title="Next Day"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Daily Score Meter */}
-        <div className="flex items-center gap-4 bg-slate-50 p-3 rounded-xl border border-slate-200/80">
-          <div className="text-right">
-            <span className="text-xs text-slate-500 font-medium block">Daily Health Score</span>
-            <span className={`text-2xl font-black ${summary.score >= 70 ? "text-emerald-600" : summary.score >= 45 ? "text-amber-600" : "text-rose-600"}`}>
-              {summary.score}%
-            </span>
-          </div>
-
-          <div className="w-14 h-14 relative flex items-center justify-center">
-            <svg className="w-14 h-14 transform -rotate-90">
-              <circle
-                cx="28"
-                cy="28"
-                r="22"
-                stroke="currentColor"
-                strokeWidth="5"
-                className="text-slate-200"
-                fill="transparent"
-              />
-              <circle
-                cx="28"
-                cy="28"
-                r="22"
-                stroke="currentColor"
-                strokeWidth="5"
-                className={summary.score >= 70 ? "text-emerald-500" : summary.score >= 45 ? "text-amber-500" : "text-rose-500"}
-                fill="transparent"
-                strokeDasharray={138}
-                strokeDashoffset={138 - (138 * summary.score) / 100}
-                strokeLinecap="round"
-              />
-            </svg>
-            <CheckCircle2 className="w-4 h-4 text-emerald-500 absolute" />
-          </div>
-
-          <button
-            onClick={onNavigateToFoodLog}
-            className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition-colors shadow-xs"
-          >
-            <Utensils className="w-3.5 h-3.5" />
-            <span>Log Meals</span>
-          </button>
-        </div>
-      </div>
-
       {/* Target Metrics Grid Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
         
@@ -280,6 +190,35 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       </div>
 
+      {/* Full-width Daily Health Score */}
+      <div className="w-full flex items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+        <div>
+          <span className="text-xs text-slate-500 font-medium block">Daily Health Score</span>
+          <span className={`text-3xl font-black ${summary.score >= 70 ? "text-emerald-600" : summary.score >= 45 ? "text-amber-600" : "text-rose-600"}`}>
+            {summary.score}%
+          </span>
+        </div>
+
+        <div className="w-16 h-16 relative flex shrink-0 items-center justify-center">
+          <svg className="w-16 h-16 transform -rotate-90">
+            <circle cx="32" cy="32" r="25" stroke="currentColor" strokeWidth="5" className="text-slate-200" fill="transparent" />
+            <circle
+              cx="32"
+              cy="32"
+              r="25"
+              stroke="currentColor"
+              strokeWidth="5"
+              className={summary.score >= 70 ? "text-emerald-500" : summary.score >= 45 ? "text-amber-500" : "text-rose-500"}
+              fill="transparent"
+              strokeDasharray={157}
+              strokeDashoffset={157 - (157 * summary.score) / 100}
+              strokeLinecap="round"
+            />
+          </svg>
+          <CheckCircle2 className="w-5 h-5 text-emerald-500 absolute" />
+        </div>
+      </div>
+
       {/* Main Grid: Meals Breakdown + Daily Log History Table */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
@@ -290,12 +229,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <Utensils className="w-4 h-4 text-blue-600" />
               Meal Breakdown ({summary.entriesCount} entries logged)
             </h3>
-            <button
-              onClick={onNavigateToFoodLog}
-              className="text-xs text-blue-600 hover:text-blue-700 font-semibold underline"
-            >
-              Manage Food Log →
-            </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">

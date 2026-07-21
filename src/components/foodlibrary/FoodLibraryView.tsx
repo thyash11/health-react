@@ -98,32 +98,32 @@ export const FoodLibraryView: React.FC = () => {
     <div className="space-y-6 pb-12">
       
       {/* Top Bar */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
-        <div>
-          <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-            <BookOpen className="w-5 h-5 text-blue-600" />
-            Nutritional Food Library ({foodLibrary.length} items)
-          </h2>
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+        <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
+          <BookOpen className="w-5 h-5 text-blue-600" />
+          Nutritional Food Library ({foodLibrary.length} items)
+        </h2>
+        <div className="mt-1 flex items-center justify-between gap-3">
           <p className="text-xs text-slate-500 mt-0.5">
             Database of food items with macro density per 100g and default portion sizes
           </p>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex shrink-0 items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-blue-700 sm:px-4"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Custom Food</span>
+          </button>
         </div>
-
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-4 py-2 rounded-xl transition-colors shadow-xs"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add Custom Food</span>
-        </button>
       </div>
 
       {/* Add Custom Food Modal */}
       {showAddModal && (
-        <form
-          onSubmit={handleCreateFood}
-          className="bg-white border border-blue-200 rounded-2xl p-5 shadow-xl space-y-4 text-xs"
-        >
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/45 p-3 backdrop-blur-xs sm:p-4">
+          <form
+            onSubmit={handleCreateFood}
+            className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-blue-200 bg-white p-4 text-xs shadow-2xl space-y-4 sm:p-5"
+          >
           <div className="flex items-center justify-between border-b border-slate-100 pb-2">
             <h3 className="font-bold text-slate-900 text-sm">Add New Item to Food Library</h3>
             <button
@@ -242,7 +242,8 @@ export const FoodLibraryView: React.FC = () => {
               Save to Library
             </button>
           </div>
-        </form>
+          </form>
+        </div>
       )}
 
       {/* Search & Category Filter */}

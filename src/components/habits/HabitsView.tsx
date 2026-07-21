@@ -19,25 +19,6 @@ export const HabitsView: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-12">
-      <div className="bg-white border border-slate-200/80 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
-        <div>
-          <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-            <Activity className="w-5 h-5 text-blue-600" />
-            Daily Habits & Score ({formatDateForDisplay(selectedDate)})
-          </h2>
-          <p className="text-xs text-slate-500 mt-1">
-            Generated live from {summary.entriesCount} daily log {summary.entriesCount === 1 ? "entry" : "entries"}. Nothing on this page is saved separately.
-          </p>
-        </div>
-
-        <div className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border border-slate-200 ${scoreInfo.bg}`}>
-          <div>
-            <span className="text-[10px] text-slate-500 font-semibold uppercase block">Live score</span>
-            <span className={`text-2xl font-extrabold ${scoreInfo.text}`}>{summary.score}%</span>
-          </div>
-          <Award className={`w-7 h-7 ${summary.score >= 70 ? "text-emerald-600" : summary.score >= 45 ? "text-amber-600" : "text-rose-600"}`} />
-        </div>
-      </div>
 
       {summary.entriesCount === 0 ? (
         <div className="bg-white border border-slate-200 rounded-2xl p-10 text-center shadow-sm">

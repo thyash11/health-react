@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { 
   Plus, 
-  Search, 
+  Search as SearchIcon, 
   Trash2, 
   Edit3, 
   UtensilsCrossed, 
@@ -21,6 +21,7 @@ export const DailyFoodLogView: React.FC = () => {
     setSelectedDate, 
     dailyLogs, 
     addLogEntry, 
+    addBatchLogEntries,
     updateLogEntry, 
     deleteLogEntry, 
     foodLibrary 
@@ -30,6 +31,8 @@ export const DailyFoodLogView: React.FC = () => {
   const [selectedMealFilter, setSelectedMealFilter] = useState<string>("All");
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [jsonInput, setJsonInput] = useState("");
+  const [jsonMessage, setJsonMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
 
   // Form State
   const [formMeal, setFormMeal] = useState<MealType>("Breakfast");
@@ -51,6 +54,23 @@ export const DailyFoodLogView: React.FC = () => {
     "Breakfast", "Chutney", "Grain", "Protein", "Dessert", "Snack", 
     "Bakery", "Added Sugar", "Fruit", "Dal/Curry", "Sugary Drink", "Added Fat", "Vegetable", "Beverage", "Other"
   ];
+
+  const sampleJson = JSON.stringify({
+    date: selectedDate,
+    meal: "Lunch",
+    time: "1:30 PM",
+    foodItem: "Cooked white rice",
+    category: "Grain",
+    quantityGrams: 250,
+    calories: 325,
+    protein: 6,
+    carbs: 70,
+    fat: 0.8,
+    fiber: 1,
+    waterMl: 500,
+    walkKm: 0,
+    notes: "Estimated serving",
+  }, null, 2);
 
   // Auto-calculate macros when food is chosen from Library
   const handleSelectLibraryItem = (item: typeof foodLibrary[0]) => {
@@ -146,6 +166,71 @@ export const DailyFoodLogView: React.FC = () => {
     setShowAddForm(true);
   };
 
+  const handleJsonImport = () => {
+    setJsonMessage(null);
+
+    try {
+      const normalizedInput = jsonInput.trim()
+        .replace(/^```(?:json)?\s*/i, "")
+        .replace(/\s*```$/, "");
+      const parsed: unknown = JSON.parse(normalizedInput);
+      const items = Array.isArray(parsed) ? parsed : [parsed];
+      if (items.length === 0) throw new Error("The JSON array is empty.");
+
+      const numberValue = (value: unknown, field: string, row: number) => {
+        const number = Number(value ?? 0);
+        if (!Number.isFinite(number) || number < 0) {
+          throw new Error(`Entry ${row}: ${field} must be a positive number or zero.`);
+        }
+        return number;
+      };
+
+      const entries: Omit<DailyLogEntry, "id">[] = items.map((item, index) => {
+        const row = index + 1;
+        if (!item || typeof item !== "object" || Array.isArray(item)) {
+          throw new Error(`Entry ${row} must be a JSON object.`);
+        }
+
+        const value = item as Record<string, unknown>;
+        const foodItem = typeof value.foodItem === "string" ? value.foodItem.trim() : "";
+        if (!foodItem) throw new Error(`Entry ${row}: foodItem is required.`);
+        if (!mealsList.includes(value.meal as MealType)) {
+          throw new Error(`Entry ${row}: meal must be one of ${mealsList.join(", ")}.`);
+        }
+        if (!categoriesList.includes(value.category as FoodCategory)) {
+          throw new Error(`Entry ${row}: category must be one of ${categoriesList.join(", ")}.`);
+        }
+
+        const date = typeof value.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value.date)
+          ? value.date
+          : selectedDate;
+
+        return {
+          date,
+          meal: value.meal as MealType,
+          time: typeof value.time === "string" && value.time.trim() ? value.time.trim() : "10:30 AM",
+          foodItem,
+          category: value.category as FoodCategory,
+          quantityGrams: numberValue(value.quantityGrams, "quantityGrams", row),
+          calories: numberValue(value.calories, "calories", row),
+          protein: numberValue(value.protein, "protein", row),
+          carbs: numberValue(value.carbs, "carbs", row),
+          fat: numberValue(value.fat, "fat", row),
+          fiber: numberValue(value.fiber, "fiber", row),
+          waterMl: numberValue(value.waterMl, "waterMl", row),
+          walkKm: numberValue(value.walkKm, "walkKm", row),
+          notes: typeof value.notes === "string" ? value.notes : "",
+        };
+      });
+
+      addBatchLogEntries(entries);
+      setJsonInput("");
+      setJsonMessage({ type: "success", text: `Added ${entries.length} food ${entries.length === 1 ? "entry" : "entries"}.` });
+    } catch (error) {
+      setJsonMessage({ type: "error", text: error instanceof Error ? error.message : "Invalid JSON input." });
+    }
+  };
+
   // Filter logs by date, search query and meal
   const filteredLogs = dailyLogs.filter((log) => {
     const dateMatch = log.date === selectedDate;
@@ -167,48 +252,33 @@ export const DailyFoodLogView: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-12">
-      
-      {/* Header Controls Bar */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
-        
-        <div>
-          <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-            <UtensilsCrossed className="w-5 h-5 text-blue-600" />
-            Daily Food Log Editor
-          </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Log meals, scale food quantities, and auto-calculate calories & macros
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Add Food Entry Button */}
-          <button
-            onClick={() => {
-              setEditingId(null);
-              setShowAddForm(!showAddForm);
-            }}
-            className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs px-3.5 py-2 rounded-xl transition-colors border border-slate-200"
-          >
-            {showAddForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-            <span>{showAddForm ? "Close Form" : "Add Food"}</span>
-          </button>
-        </div>
-
-      </div>
 
       {/* Manual Entry Form */}
       {showAddForm && (
-        <form
-          onSubmit={handleSaveEntry}
-          className="bg-white border border-blue-200 rounded-2xl p-5 shadow-lg space-y-4 animate-in fade-in duration-200"
-        >
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/45 p-3 backdrop-blur-xs sm:p-4">
+          <form
+            onSubmit={handleSaveEntry}
+            className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-2xl border border-blue-200 bg-white p-4 shadow-2xl space-y-4 animate-in fade-in duration-200 sm:p-5"
+          >
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
               <Plus className="w-4 h-4 text-blue-600" />
               {editingId ? "Edit Food Entry" : "New Food Entry"} for {formatDateForDisplay(selectedDate)}
             </h3>
-            <span className="text-xs text-slate-500">Auto-calculates from food library presets</span>
+            <div className="flex items-center gap-3">
+              <span className="hidden text-xs text-slate-500 sm:inline">Auto-calculates from food library presets</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddForm(false);
+                  setEditingId(null);
+                }}
+                aria-label="Close food entry form"
+                className="rounded-lg p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
 
           {/* Quick Library Picker Suggestion Chips */}
@@ -397,7 +467,10 @@ export const DailyFoodLogView: React.FC = () => {
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"
-              onClick={() => setShowAddForm(false)}
+              onClick={() => {
+                setShowAddForm(false);
+                setEditingId(null);
+              }}
               className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-colors font-medium"
             >
               Cancel
@@ -410,22 +483,37 @@ export const DailyFoodLogView: React.FC = () => {
               <span>{editingId ? "Update Entry" : "Save Entry"}</span>
             </button>
           </div>
-        </form>
+          </form>
+        </div>
       )}
 
       {/* Filter and Search Bar */}
       <div className="bg-white border border-slate-200/80 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs shadow-sm">
         
-        {/* Search */}
-        <div className="relative w-full sm:w-64">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search food item, category or notes..."
-            className="w-full bg-slate-50 border border-slate-200/80 pl-9 pr-3 py-2 text-slate-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-          />
+        {/* Search and Add Food */}
+        <div className="flex w-full items-center gap-2 sm:w-auto">
+          <div className="relative min-w-0 flex-1 sm:w-64 sm:flex-none">
+            <SearchIcon className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search food item, category or notes..."
+              className="w-full bg-slate-50 border border-slate-200/80 pl-9 pr-3 py-2 text-slate-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            />
+          </div>
+
+          {/* Add Food Entry Button */}
+          <button
+            onClick={() => {
+              setEditingId(null);
+              setShowAddForm(true);
+            }}
+            className="flex shrink-0 items-center gap-1.5 whitespace-nowrap bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs px-3.5 py-2 rounded-xl transition-colors border border-slate-200"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Food</span>
+          </button>
         </div>
 
         {/* Meal Filter Chips */}
@@ -449,13 +537,13 @@ export const DailyFoodLogView: React.FC = () => {
       </div>
 
       {/* Food Log Table (Direct Spreadsheet Match) */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-sm">
+      <div className="isolate bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1280px] text-left text-xs border-separate border-spacing-0">
+          <table className="w-full min-w-[1280px] table-fixed text-left text-xs border-separate border-spacing-0">
             <thead>
               <tr className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 uppercase tracking-wider">
-                <th className="sticky left-0 z-30 w-32 min-w-32 bg-slate-50 p-3">Meal</th>
-                <th className="sticky left-32 z-30 w-64 min-w-64 border-r border-slate-200 bg-slate-50 p-3 shadow-[5px_0_8px_-8px_rgba(15,23,42,0.45)]">Food Item</th>
+                <th style={{ width: "min(35vw, 15rem)" }} className="sticky left-0 z-30 bg-slate-50 p-2 sm:p-3">Food Item</th>
+                <th className="p-3">Meal</th>
                 <th className="p-3">Time</th>
                 <th className="p-3">Category</th>
                 <th className="p-3 text-right">Qty</th>
@@ -483,8 +571,8 @@ export const DailyFoodLogView: React.FC = () => {
               ) : (
                 filteredLogs.map((log) => (
                   <tr key={log.id} className="group hover:bg-slate-50/80 transition-colors">
-                    <td className="sticky left-0 z-20 w-32 min-w-32 bg-white p-3 font-semibold text-slate-900 transition-colors group-hover:bg-slate-50">{log.meal}</td>
-                    <td className="sticky left-32 z-20 w-64 min-w-64 border-r border-slate-200 bg-white p-3 font-medium text-slate-900 shadow-[5px_0_8px_-8px_rgba(15,23,42,0.45)] transition-colors group-hover:bg-slate-50">{log.foodItem}</td>
+                    <td style={{ width: "min(35vw, 15rem)" }} className="sticky left-0 z-20 break-words bg-white p-2 sm:p-3 font-medium text-slate-900 transition-colors group-hover:bg-slate-50">{log.foodItem}</td>
+                    <td className="p-3 font-semibold text-slate-900">{log.meal}</td>
                     <td className="p-3 text-slate-400 text-[11px] whitespace-nowrap">{log.time || "—"}</td>
                     <td className="p-3">
                       <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
@@ -545,6 +633,87 @@ export const DailyFoodLogView: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* JSON Import */}
+      <section className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4">
+        <div>
+          <h3 className="text-sm font-bold text-slate-900">Import Food Log JSON</h3>
+          <p className="text-xs text-slate-500 mt-1">
+            Paste one JSON object or an array of objects generated by ChatGPT. IDs are created automatically.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="space-y-2 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <label className="text-xs font-semibold text-slate-700">Sample single object</label>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(sampleJson);
+                    setJsonMessage({ type: "success", text: "Sample JSON copied." });
+                  } catch {
+                    setJsonInput(sampleJson);
+                    setJsonMessage({ type: "success", text: "Sample JSON placed in the input box." });
+                  }
+                }}
+                className="text-[11px] font-semibold text-blue-600 hover:text-blue-700"
+              >
+                Copy sample
+              </button>
+            </div>
+            <pre className="max-h-80 overflow-auto whitespace-pre rounded-xl bg-slate-900 p-3 text-[11px] leading-relaxed text-slate-100">{sampleJson}</pre>
+            <p className="text-[10px] leading-relaxed text-slate-500">
+              Meal values: {mealsList.join(", ")}. Category values: {categoriesList.join(", ")}.
+            </p>
+          </div>
+
+          <div className="space-y-2 min-w-0">
+            <label htmlFor="food-log-json" className="text-xs font-semibold text-slate-700">Paste JSON here</label>
+            <textarea
+              id="food-log-json"
+              value={jsonInput}
+              onChange={(event) => {
+                setJsonInput(event.target.value);
+                setJsonMessage(null);
+              }}
+              rows={15}
+              spellCheck={false}
+              placeholder={sampleJson}
+              className="w-full resize-y rounded-xl border border-slate-200 bg-slate-50 p-3 font-mono text-[11px] leading-relaxed text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            />
+
+            {jsonMessage && (
+              <div className={`rounded-xl border p-2.5 text-xs ${jsonMessage.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-rose-200 bg-rose-50 text-rose-700"}`}>
+                {jsonMessage.text}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setJsonInput("");
+                  setJsonMessage(null);
+                }}
+                disabled={!jsonInput && !jsonMessage}
+                className="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-40 rounded-xl"
+              >
+                Clear
+              </button>
+              <button
+                type="button"
+                onClick={handleJsonImport}
+                disabled={!jsonInput.trim()}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-xs font-bold rounded-xl transition-colors"
+              >
+                Import JSON
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
 
     </div>
   );
