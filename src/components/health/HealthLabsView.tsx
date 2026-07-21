@@ -8,12 +8,13 @@ import {
   Plus, 
   AlertTriangle, 
   CheckCircle2, 
-  Sparkles, 
   Trash2, 
   Save 
 } from "lucide-react";
 import { useTracker } from "../../context/TrackerContext";
 import { LabTestRecord, HealthMetric } from "../../types";
+import { formatDateForDisplay } from "../../utils/nutritionCalculator";
+import { FormattedDateInput } from "../FormattedDateInput";
 
 export const HealthLabsView: React.FC = () => {
   const { 
@@ -28,8 +29,6 @@ export const HealthLabsView: React.FC = () => {
     addHealthMetric, 
     deleteHealthMetric, 
     periodicChecks,
-    dailyLogs,
-    habits
   } = useTracker();
 
   // Targets state
@@ -49,10 +48,6 @@ export const HealthLabsView: React.FC = () => {
   const [testTarget, setTestTarget] = useState("< 200");
   const [testStatus, setTestStatus] = useState<LabTestRecord["status"]>("Normal");
   const [testNotes, setTestNotes] = useState("");
-
-  // AI Health Coach State
-  const [aiAnalysis, setAiAnalysis] = useState<any>(null);
-  const [loadingAi, setLoadingAi] = useState(false);
 
   const handleSaveTargets = (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,33 +81,6 @@ export const HealthLabsView: React.FC = () => {
     setShowAddLab(false);
   };
 
-  const generateAiInsights = async () => {
-    setLoadingAi(true);
-    try {
-      const res = await fetch("/api/health-insights", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userProfile: profile,
-          targets,
-          recentLogs: dailyLogs.slice(-15),
-          labTests,
-        }),
-      });
-      const data = await res.json();
-      if (data.success && data.data) {
-        setAiAnalysis(data.data);
-      } else {
-        alert("Unable to generate AI analysis. Check API key configuration.");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Error calling AI analysis server endpoint.");
-    } finally {
-      setLoadingAi(false);
-    }
-  };
-
   return (
     <div className="space-y-6 pb-12">
       
@@ -128,44 +96,7 @@ export const HealthLabsView: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={generateAiInsights}
-          disabled={loadingAi}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-xs transition-all"
-        >
-          <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
-          <span>{loadingAi ? "Analyzing Data..." : "AI Health Analysis"}</span>
-        </button>
       </div>
-
-      {/* AI Health Insights Output Box */}
-      {aiAnalysis && (
-        <div className="bg-white border border-blue-200 rounded-2xl p-5 space-y-4 shadow-lg">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-            <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-amber-500" />
-              AI Medical Nutrition Analysis & Recommendations
-            </h3>
-            <button onClick={() => setAiAnalysis(null)} className="text-xs text-slate-400 hover:text-slate-600">
-              Dismiss
-            </button>
-          </div>
-
-          <p className="text-xs text-blue-900 font-medium leading-relaxed bg-blue-50/80 p-3 rounded-xl border border-blue-100">
-            {aiAnalysis.summary}
-          </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-            {aiAnalysis.recommendations?.map((rec: any, idx: number) => (
-              <div key={idx} className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 space-y-1.5">
-                <span className="text-[10px] uppercase font-bold text-blue-600 block">{rec.category}</span>
-                <h4 className="font-bold text-slate-900">{rec.title}</h4>
-                <p className="text-slate-600 text-[11px] leading-normal">{rec.advice}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Grid: Personal Targets + User Context */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -316,10 +247,10 @@ export const HealthLabsView: React.FC = () => {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div>
                 <label className="text-slate-500 block mb-1">Date</label>
-                <input
-                  type="date"
+                <FormattedDateInput
                   value={testDate}
-                  onChange={(e) => setTestDate(e.target.value)}
+                  onChange={setTestDate}
+                  ariaLabel="Select test date"
                   className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl p-2.5"
                 />
               </div>
@@ -434,7 +365,7 @@ export const HealthLabsView: React.FC = () => {
             <tbody className="divide-y divide-slate-100 text-slate-700">
               {labTests.map((t) => (
                 <tr key={t.id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="p-3 font-medium text-slate-600">{t.date}</td>
+                  <td className="p-3 font-medium text-slate-600">{formatDateForDisplay(t.date)}</td>
                   <td className="p-3 font-bold text-slate-900">{t.testName}</td>
                   <td className="p-3 text-right font-black text-amber-600 text-sm">{t.resultValue}</td>
                   <td className="p-3 text-slate-500">{t.unit}</td>
@@ -483,7 +414,7 @@ export const HealthLabsView: React.FC = () => {
                   {item.frequency}
                 </span>
               </div>
-              <p className="text-slate-500 text-[11px]">Last Recorded: <span className="text-slate-800 font-semibold">{item.lastDate}</span></p>
+              <p className="text-slate-500 text-[11px]">Last Recorded: <span className="text-slate-800 font-semibold">{formatDateForDisplay(item.lastDate)}</span></p>
               <p className="text-slate-400 text-[10px]">{item.notes}</p>
             </div>
           ))}

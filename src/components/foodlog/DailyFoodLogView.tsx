@@ -4,7 +4,6 @@ import {
   Search, 
   Trash2, 
   Edit3, 
-  Sparkles, 
   UtensilsCrossed, 
   Filter, 
   Calendar, 
@@ -14,12 +13,9 @@ import {
 } from "lucide-react";
 import { useTracker } from "../../context/TrackerContext";
 import { DailyLogEntry, MealType, FoodCategory } from "../../types";
+import { formatDateForDisplay } from "../../utils/nutritionCalculator";
 
-interface DailyFoodLogViewProps {
-  onOpenAiAssistant: () => void;
-}
-
-export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({ onOpenAiAssistant }) => {
+export const DailyFoodLogView: React.FC = () => {
   const { 
     selectedDate, 
     setSelectedDate, 
@@ -186,15 +182,6 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({ onOpenAiAssi
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* AI Quick Parser Button */}
-          <button
-            onClick={onOpenAiAssistant}
-            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-3.5 py-2 rounded-xl shadow-xs transition-all transform hover:scale-[1.02]"
-          >
-            <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
-            <span>AI Voice/Text Parser</span>
-          </button>
-
           {/* Add Food Entry Button */}
           <button
             onClick={() => {
@@ -204,7 +191,7 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({ onOpenAiAssi
             className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs px-3.5 py-2 rounded-xl transition-colors border border-slate-200"
           >
             {showAddForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-            <span>{showAddForm ? "Close Form" : "Manual Add"}</span>
+            <span>{showAddForm ? "Close Form" : "Add Food"}</span>
           </button>
         </div>
 
@@ -219,7 +206,7 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({ onOpenAiAssi
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
               <Plus className="w-4 h-4 text-blue-600" />
-              {editingId ? "Edit Food Entry" : "New Food Entry"} for {selectedDate}
+              {editingId ? "Edit Food Entry" : "New Food Entry"} for {formatDateForDisplay(selectedDate)}
             </h3>
             <span className="text-xs text-slate-500">Auto-calculates from food library presets</span>
           </div>
@@ -488,8 +475,8 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({ onOpenAiAssi
                   <td colSpan={13} className="text-center py-12 text-slate-400">
                     <div className="flex flex-col items-center justify-center space-y-2">
                       <UtensilsCrossed className="w-8 h-8 text-slate-300" />
-                      <p className="font-medium text-slate-600">No food items logged for {selectedDate}</p>
-                      <p className="text-xs text-slate-400">Click "Manual Add" or use "AI Voice/Text Parser" to log meals</p>
+                      <p className="font-medium text-slate-600">No food items logged for {formatDateForDisplay(selectedDate)}</p>
+                      <p className="text-xs text-slate-400">Click "Add Food" to log a meal</p>
                     </div>
                   </td>
                 </tr>

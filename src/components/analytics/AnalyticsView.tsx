@@ -17,7 +17,7 @@ import {
 } from "recharts";
 import { TrendingUp, Calendar, Flame, Dumbbell, Droplets, Footprints, Award, PieChart as PieIcon } from "lucide-react";
 import { useTracker } from "../../context/TrackerContext";
-import { aggregateDailySummary } from "../../utils/nutritionCalculator";
+import { aggregateDailySummary, formatDateForDisplay } from "../../utils/nutritionCalculator";
 
 type TimeframeMode = "week" | "month" | "all";
 
@@ -42,7 +42,7 @@ export const AnalyticsView: React.FC = () => {
   const chartData = selectedDates.map((dateStr) => {
     const summary = aggregateDailySummary(dateStr, dailyLogs, habits, targets);
     return {
-      date: dateStr.slice(5), // Short date like "07-15"
+      date: formatDateForDisplay(dateStr),
       fullDate: dateStr,
       calories: summary.totalCalories,
       protein: summary.totalProtein,

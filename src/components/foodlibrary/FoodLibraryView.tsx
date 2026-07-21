@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useTracker } from "../../context/TrackerContext";
 import { FoodItem, FoodCategory } from "../../types";
+import { formatDateForDisplay } from "../../utils/nutritionCalculator";
 
 export const FoodLibraryView: React.FC = () => {
   const { 
@@ -82,7 +83,7 @@ export const FoodLibraryView: React.FC = () => {
       walkKm: 0,
       notes: `Logged from Food Library (${item.defaultServingGrams}g)`,
     });
-    alert(`Logged ${item.name} (${item.defaultServingGrams}g) for ${selectedDate}!`);
+    alert(`Logged ${item.name} (${item.defaultServingGrams}g) for ${formatDateForDisplay(selectedDate)}!`);
   };
 
   const filteredItems = foodLibrary.filter((item) => {
@@ -346,7 +347,7 @@ export const FoodLibraryView: React.FC = () => {
                   className="flex items-center gap-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-xs px-3 py-1.5 rounded-xl border border-blue-200 transition-colors"
                 >
                   <Utensils className="w-3.5 h-3.5" />
-                  <span>Log To {selectedDate.slice(5)}</span>
+                  <span>Log To {formatDateForDisplay(selectedDate)}</span>
                 </button>
               </div>
             </div>

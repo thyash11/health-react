@@ -12,8 +12,7 @@ import {
   Clock, 
   AlertTriangle, 
   CheckCircle2, 
-  Utensils, 
-  Sparkles 
+  Utensils
 } from "lucide-react";
 import { useTracker } from "../../context/TrackerContext";
 import { aggregateDailySummary, getScoreColor, formatDateForDisplay } from "../../utils/nutritionCalculator";
@@ -21,12 +20,10 @@ import { MealType } from "../../types";
 
 interface DashboardViewProps {
   onNavigateToFoodLog: () => void;
-  onOpenAiAssistant: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigateToFoodLog,
-  onOpenAiAssistant,
 }) => {
   const { selectedDate, setSelectedDate, dailyLogs, habits, targets, profile } = useTracker();
 
@@ -145,11 +142,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 strokeLinecap="round"
               />
             </svg>
-            <Sparkles className="w-4 h-4 text-amber-500 absolute" />
+            <CheckCircle2 className="w-4 h-4 text-emerald-500 absolute" />
           </div>
 
           <button
-            onClick={onOpenAiAssistant}
+            onClick={onNavigateToFoodLog}
             className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition-colors shadow-xs"
           >
             <Utensils className="w-3.5 h-3.5" />
@@ -405,7 +402,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       }`}
                     >
                       <td className="py-2.5 text-slate-700">
-                        {dateStr.slice(5)}
+                        {formatDateForDisplay(dateStr)}
                       </td>
                       <td className={`py-2.5 text-right font-medium ${isOverCal ? "text-rose-600 font-semibold" : "text-slate-800"}`}>
                         {daySum.totalCalories}

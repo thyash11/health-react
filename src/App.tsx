@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { TrackerProvider } from "./context/TrackerContext";
 import { Navigation, TabType } from "./components/Navigation";
 import { DashboardView } from "./components/dashboard/DashboardView";
@@ -7,11 +7,14 @@ import { HabitsView } from "./components/habits/HabitsView";
 import { AnalyticsView } from "./components/analytics/AnalyticsView";
 import { FoodLibraryView } from "./components/foodlibrary/FoodLibraryView";
 import { HealthLabsView } from "./components/health/HealthLabsView";
-import { AiMealAssistantModal } from "./components/AiMealAssistantModal";
 
 function MainApp() {
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
-  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+
+  useEffect(() => {
+    localStorage.removeItem("nutrimetric_openai_settings_v1");
+    sessionStorage.removeItem("nutrimetric_openai_key_session_v1");
+  }, []);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans antialiased selection:bg-blue-600 selection:text-white">
@@ -20,7 +23,6 @@ function MainApp() {
       <Navigation
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        onOpenAiAssistant={() => setIsAiModalOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -28,14 +30,11 @@ function MainApp() {
         {activeTab === "dashboard" && (
           <DashboardView
             onNavigateToFoodLog={() => setActiveTab("foodlog")}
-            onOpenAiAssistant={() => setIsAiModalOpen(true)}
           />
         )}
 
         {activeTab === "foodlog" && (
-          <DailyFoodLogView
-            onOpenAiAssistant={() => setIsAiModalOpen(true)}
-          />
+          <DailyFoodLogView />
         )}
 
         {activeTab === "habits" && <HabitsView />}
@@ -46,12 +45,6 @@ function MainApp() {
 
         {activeTab === "health" && <HealthLabsView />}
       </main>
-
-      {/* AI Natural Language Meal Parser Popup Modal */}
-      <AiMealAssistantModal
-        isOpen={isAiModalOpen}
-        onClose={() => setIsAiModalOpen(false)}
-      />
 
     </div>
   );

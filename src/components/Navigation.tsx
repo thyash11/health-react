@@ -6,24 +6,22 @@ import {
   TrendingUp, 
   BookOpen, 
   HeartPulse, 
-  Sparkles, 
   RotateCcw,
-  Calendar
+  Calendar,
 } from "lucide-react";
 import { useTracker } from "../context/TrackerContext";
+import { FormattedDateInput } from "./FormattedDateInput";
 
 export type TabType = "dashboard" | "foodlog" | "habits" | "analytics" | "library" | "health";
 
 interface NavigationProps {
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
-  onOpenAiAssistant: () => void;
 }
 
 export const Navigation: React.FC<NavigationProps> = ({
   activeTab,
   setActiveTab,
-  onOpenAiAssistant,
 }) => {
   const { selectedDate, setSelectedDate, resetToSampleData } = useTracker();
 
@@ -63,22 +61,13 @@ export const Navigation: React.FC<NavigationProps> = ({
             <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700">
               <Calendar className="w-3.5 h-3.5 mr-1.5 text-blue-600 shrink-0" />
               <span className="font-medium mr-2 text-slate-500 hidden sm:inline">Active Date:</span>
-              <input
-                type="date"
+              <FormattedDateInput
                 value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="bg-transparent border-none text-slate-900 text-xs font-semibold focus:outline-none cursor-pointer"
+                onChange={setSelectedDate}
+                ariaLabel="Select active date"
+                className="bg-transparent border-none text-slate-900 text-xs font-semibold rounded-md"
               />
             </div>
-
-            {/* AI Assistant Button */}
-            <button
-              onClick={onOpenAiAssistant}
-              className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs px-3.5 py-1.5 rounded-xl shadow-sm transition-all transform hover:scale-[1.02] active:scale-95"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
-              <span>AI Quick Log</span>
-            </button>
 
             {/* Reset Sample Data */}
             <button

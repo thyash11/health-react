@@ -9,12 +9,11 @@ import {
   AlertCircle, 
   Award, 
   Save, 
-  Sparkles, 
   Flame 
 } from "lucide-react";
 import { useTracker } from "../../context/TrackerContext";
 import { DayType, DailyHabitRecord } from "../../types";
-import { calculateDailyHealthScore, aggregateDailySummary, getScoreColor } from "../../utils/nutritionCalculator";
+import { calculateDailyHealthScore, aggregateDailySummary, getScoreColor, formatDateForDisplay } from "../../utils/nutritionCalculator";
 
 export const HabitsView: React.FC = () => {
   const { selectedDate, habits, updateHabitRecord, dailyLogs, targets } = useTracker();
@@ -90,7 +89,7 @@ export const HabitsView: React.FC = () => {
       sugaryDrinksEntries: Number(sugaryDrinksEntries),
       dailyScore: calculatedScore,
     });
-    alert(`Habit & Health parameters saved for ${selectedDate}!`);
+    alert(`Habit & Health parameters saved for ${formatDateForDisplay(selectedDate)}!`);
   };
 
   const scoreInfo = getScoreColor(calculatedScore);
@@ -103,7 +102,7 @@ export const HabitsView: React.FC = () => {
         <div>
           <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
             <Activity className="w-5 h-5 text-blue-600" />
-            Daily Habits & Score Tracker ({selectedDate})
+            Daily Habits & Score Tracker ({formatDateForDisplay(selectedDate)})
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
             Record sleep, activity, hydration, day context, and habit metrics to update daily health score

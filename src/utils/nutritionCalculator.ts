@@ -121,14 +121,25 @@ export function aggregateDailySummary(
 }
 
 export function formatDateForDisplay(dateStr: string): string {
-  if (!dateStr) return '';
-  try {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return dateStr;
-    return d.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" });
-  } catch {
-    return dateStr;
-  }
+  if (!dateStr) return "";
+
+  // Parse date-only values locally so UTC conversion cannot move the date by a day.
+  const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+  const date = dateOnlyMatch
+    ? new Date(
+        Number(dateOnlyMatch[1]),
+        Number(dateOnlyMatch[2]) - 1,
+        Number(dateOnlyMatch[3])
+      )
+    : new Date(dateStr);
+
+  if (Number.isNaN(date.getTime())) return dateStr;
+
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(date);
 }
 
 export function getScoreColor(score: number): { text: string; bg: string; badge: string } {
