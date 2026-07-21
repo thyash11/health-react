@@ -6,7 +6,6 @@ import {
   TrendingUp, 
   BookOpen, 
   HeartPulse, 
-  RotateCcw,
   Calendar,
 } from "lucide-react";
 import { useTracker } from "../context/TrackerContext";
@@ -23,7 +22,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   activeTab,
   setActiveTab,
 }) => {
-  const { selectedDate, setSelectedDate, resetToSampleData } = useTracker();
+  const { selectedDate, setSelectedDate } = useTracker();
 
   const navItems = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -38,10 +37,10 @@ export const Navigation: React.FC<NavigationProps> = ({
     <header className="bg-white text-slate-900 shadow-sm border-b border-slate-200 sticky top-0 z-30">
       {/* Top Banner Bar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col md:flex-row md:items-center justify-between py-3.5 gap-3">
+        <div className="flex items-center justify-between py-3.5 gap-2 sm:gap-3">
           
           {/* Logo & Title */}
-          <div className="flex items-center space-x-3">
+          <div className="flex min-w-0 items-center space-x-2 sm:space-x-3">
             <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold shadow-sm">
               <Activity className="w-5 h-5 text-white" />
             </div>
@@ -56,9 +55,9 @@ export const Navigation: React.FC<NavigationProps> = ({
           </div>
 
           {/* Quick Actions & Date Picker */}
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             {/* Selected Date Picker */}
-            <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700">
+            <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl px-2 sm:px-3 py-1.5 text-xs text-slate-700">
               <Calendar className="w-3.5 h-3.5 mr-1.5 text-blue-600 shrink-0" />
               <span className="font-medium mr-2 text-slate-500 hidden sm:inline">Active Date:</span>
               <FormattedDateInput
@@ -69,18 +68,6 @@ export const Navigation: React.FC<NavigationProps> = ({
               />
             </div>
 
-            {/* Reset Sample Data */}
-            <button
-              onClick={() => {
-                if (confirm("Reset to default sample dataset from Excel sheets?")) {
-                  resetToSampleData();
-                }
-              }}
-              title="Reset sample data"
-              className="p-2 text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs transition-colors"
-            >
-              <RotateCcw className="w-4 h-4" />
-            </button>
           </div>
         </div>
 

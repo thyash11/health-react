@@ -44,7 +44,6 @@ interface TrackerContextType {
   updateLabTest: (id: string, test: Partial<LabTestRecord>) => void;
   deleteLabTest: (id: string) => void;
   periodicChecks: PeriodicCheckItem[];
-  resetToSampleData: () => void;
 }
 
 const TrackerContext = createContext<TrackerContextType | undefined>(undefined);
@@ -212,17 +211,6 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setLabTests((prev) => prev.filter((t) => t.id !== id));
   };
 
-  const resetToSampleData = () => {
-    setSelectedDateState("2026-07-15");
-    setTargets(initialTargets);
-    setProfile(initialProfile);
-    setFoodLibrary(initialFoodLibrary);
-    setDailyLogs(initialDailyLogs);
-    setHealthMetrics(initialHealthMetrics);
-    setLabTests(initialLabTests);
-    localStorage.clear();
-  };
-
   return (
     <TrackerContext.Provider
       value={{
@@ -251,7 +239,6 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
         updateLabTest,
         deleteLabTest,
         periodicChecks,
-        resetToSampleData,
       }}
     >
       {children}

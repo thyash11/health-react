@@ -451,12 +451,12 @@ export const DailyFoodLogView: React.FC = () => {
       {/* Food Log Table (Direct Spreadsheet Match) */}
       <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
+          <table className="w-full min-w-[1280px] text-left text-xs border-separate border-spacing-0">
             <thead>
               <tr className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 uppercase tracking-wider">
-                <th className="p-3">Meal</th>
+                <th className="sticky left-0 z-30 w-32 min-w-32 bg-slate-50 p-3">Meal</th>
+                <th className="sticky left-32 z-30 w-64 min-w-64 border-r border-slate-200 bg-slate-50 p-3 shadow-[5px_0_8px_-8px_rgba(15,23,42,0.45)]">Food Item</th>
                 <th className="p-3">Time</th>
-                <th className="p-3">Food Item</th>
                 <th className="p-3">Category</th>
                 <th className="p-3 text-right">Qty</th>
                 <th className="p-3 text-right text-amber-600">Calories</th>
@@ -482,10 +482,10 @@ export const DailyFoodLogView: React.FC = () => {
                 </tr>
               ) : (
                 filteredLogs.map((log) => (
-                  <tr key={log.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="p-3 font-semibold text-slate-900">{log.meal}</td>
+                  <tr key={log.id} className="group hover:bg-slate-50/80 transition-colors">
+                    <td className="sticky left-0 z-20 w-32 min-w-32 bg-white p-3 font-semibold text-slate-900 transition-colors group-hover:bg-slate-50">{log.meal}</td>
+                    <td className="sticky left-32 z-20 w-64 min-w-64 border-r border-slate-200 bg-white p-3 font-medium text-slate-900 shadow-[5px_0_8px_-8px_rgba(15,23,42,0.45)] transition-colors group-hover:bg-slate-50">{log.foodItem}</td>
                     <td className="p-3 text-slate-400 text-[11px] whitespace-nowrap">{log.time || "—"}</td>
-                    <td className="p-3 font-medium text-slate-900">{log.foodItem}</td>
                     <td className="p-3">
                       <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
                         {log.category}
