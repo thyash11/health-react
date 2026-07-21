@@ -22,12 +22,12 @@ import { aggregateDailySummary, formatDateForDisplay } from "../../utils/nutriti
 type TimeframeMode = "week" | "month" | "all";
 
 export const AnalyticsView: React.FC = () => {
-  const { dailyLogs, habits, targets } = useTracker();
+  const { dailyLogs, targets } = useTracker();
   const [timeframe, setTimeframe] = useState<TimeframeMode>("week");
 
   // Get all unique dates in dataset
   const allDates = Array.from(
-    new Set([...dailyLogs.map((l) => l.date), ...habits.map((h) => h.date)])
+    new Set(dailyLogs.map((l) => l.date))
   ).sort();
 
   // Filter dates according to timeframe
@@ -40,7 +40,7 @@ export const AnalyticsView: React.FC = () => {
 
   // Generate daily summaries for chart
   const chartData = selectedDates.map((dateStr) => {
-    const summary = aggregateDailySummary(dateStr, dailyLogs, habits, targets);
+    const summary = aggregateDailySummary(dateStr, dailyLogs, targets);
     return {
       date: formatDateForDisplay(dateStr),
       fullDate: dateStr,

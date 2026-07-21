@@ -4,7 +4,6 @@ import {
   UserProfile, 
   FoodItem, 
   DailyLogEntry, 
-  DailyHabitRecord, 
   HealthMetric, 
   LabTestRecord, 
   PeriodicCheckItem 
@@ -14,7 +13,6 @@ import {
   initialProfile, 
   initialFoodLibrary, 
   initialDailyLogs, 
-  initialHabits, 
   initialHealthMetrics, 
   initialLabTests, 
   initialPeriodicChecks 
@@ -38,8 +36,6 @@ interface TrackerContextType {
   updateLogEntry: (id: string, entry: Partial<DailyLogEntry>) => void;
   deleteLogEntry: (id: string) => void;
   clearDateLogs: (date: string) => void;
-  habits: DailyHabitRecord[];
-  updateHabitRecord: (record: DailyHabitRecord) => void;
   healthMetrics: HealthMetric[];
   addHealthMetric: (metric: Omit<HealthMetric, "id">) => void;
   deleteHealthMetric: (id: string) => void;
@@ -58,7 +54,6 @@ const STORAGE_KEYS = {
   PROFILE: "health_tracker_profile_v1",
   FOOD_LIBRARY: "health_tracker_food_lib_v1",
   DAILY_LOGS: "health_tracker_logs_v1",
-  HABITS: "health_tracker_habits_v1",
   HEALTH_METRICS: "health_tracker_health_metrics_v1",
   LAB_TESTS: "health_tracker_lab_tests_v1",
   SELECTED_DATE: "health_tracker_selected_date_v1",
@@ -87,11 +82,6 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [dailyLogs, setDailyLogs] = useState<DailyLogEntry[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.DAILY_LOGS);
     return saved ? JSON.parse(saved) : initialDailyLogs;
-  });
-
-  const [habits, setHabits] = useState<DailyHabitRecord[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.HABITS);
-    return saved ? JSON.parse(saved) : initialHabits;
   });
 
   const [healthMetrics, setHealthMetrics] = useState<HealthMetric[]>(() => {
@@ -125,10 +115,6 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.DAILY_LOGS, JSON.stringify(dailyLogs));
   }, [dailyLogs]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.HABITS, JSON.stringify(habits));
-  }, [habits]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.HEALTH_METRICS, JSON.stringify(healthMetrics));
@@ -198,18 +184,6 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setDailyLogs((prev) => prev.filter((l) => l.date !== date));
   };
 
-  const updateHabitRecord = (record: DailyHabitRecord) => {
-    setHabits((prev) => {
-      const idx = prev.findIndex((h) => h.date === record.date);
-      if (idx >= 0) {
-        const updated = [...prev];
-        updated[idx] = { ...updated[idx], ...record };
-        return updated;
-      }
-      return [...prev, record];
-    });
-  };
-
   const addHealthMetric = (metric: Omit<HealthMetric, "id">) => {
     const newMetric: HealthMetric = {
       ...metric,
@@ -244,7 +218,6 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setProfile(initialProfile);
     setFoodLibrary(initialFoodLibrary);
     setDailyLogs(initialDailyLogs);
-    setHabits(initialHabits);
     setHealthMetrics(initialHealthMetrics);
     setLabTests(initialLabTests);
     localStorage.clear();
@@ -270,8 +243,6 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
         updateLogEntry,
         deleteLogEntry,
         clearDateLogs,
-        habits,
-        updateHabitRecord,
         healthMetrics,
         addHealthMetric,
         deleteHealthMetric,

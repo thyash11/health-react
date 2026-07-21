@@ -1,4 +1,4 @@
-import { DailyLogEntry, DailyHabitRecord, PersonalTargets, DailyNutritionSummary } from "../types";
+import { DailyLogEntry, PersonalTargets, DailyNutritionSummary } from "../types";
 
 export function calculateDailyHealthScore(
   calories: number,
@@ -58,21 +58,21 @@ export function calculateDailyHealthScore(
 export function aggregateDailySummary(
   dateStr: string,
   logs: DailyLogEntry[],
-  habits: DailyHabitRecord[],
   targets: PersonalTargets
 ): DailyNutritionSummary {
   const dayLogs = logs.filter(l => l.date === dateStr);
-  const dayHabit = habits.find(h => h.date === dateStr);
 
   let totalCalories = 0;
   let totalProtein = 0;
   let totalCarbs = 0;
   let totalFat = 0;
   let totalFiber = 0;
-  let totalWater = dayHabit?.waterMl || 0;
-  let totalWalkKm = dayHabit?.walkKm || 0;
-  let treatEntries = dayHabit?.treatEntries || 0;
-  let sugaryDrinks = dayHabit?.sugaryDrinksEntries || 0;
+  let totalWater = 0;
+  let totalWalkKm = 0;
+  let fruitEntries = 0;
+  let vegLegumeEntries = 0;
+  let treatEntries = 0;
+  let sugaryDrinks = 0;
 
   dayLogs.forEach(item => {
     totalCalories += item.calories || 0;
@@ -81,19 +81,25 @@ export function aggregateDailySummary(
     totalFat += item.fat || 0;
     totalFiber += item.fiber || 0;
     totalWater += item.waterMl || 0;
-    if (item.walkKm && item.walkKm > totalWalkKm) {
-      totalWalkKm = item.walkKm;
+    totalWalkKm = Math.max(totalWalkKm, item.walkKm || 0);
+
+    const searchableText = `${item.foodItem} ${item.notes || ""}`.toLowerCase();
+    if (item.category === "Fruit") fruitEntries += 1;
+    if (
+      item.category === "Vegetable" ||
+      item.category === "Dal/Curry" ||
+      /\b(dal|lentil|legume|bean|chana|gram|keerai|poriyal)\b/.test(searchableText)
+    ) vegLegumeEntries += 1;
+    if (["Dessert", "Snack", "Bakery", "Added Sugar"].includes(item.category)) {
+      treatEntries += 1;
     }
-    if (item.category === 'Dessert' || item.category === 'Snack' || item.category === 'Bakery') {
-      treatEntries = Math.max(treatEntries, 1);
-    }
-    if (item.category === 'Sugary Drink') {
-      sugaryDrinks = Math.max(sugaryDrinks, 1);
-    }
+    if (
+      item.category === "Sugary Drink" ||
+      (item.category === "Beverage" && /\b(sugar|sweetened|sugarcane|soft drink|nannari)\b/.test(searchableText))
+    ) sugaryDrinks += 1;
   });
 
-  // Calculate score
-  const score = dayHabit?.dailyScore || calculateDailyHealthScore(
+  const score = calculateDailyHealthScore(
     totalCalories,
     totalProtein,
     totalFiber,
@@ -114,6 +120,8 @@ export function aggregateDailySummary(
     totalWater: Math.round(totalWater),
     totalWalkKm: Math.round(totalWalkKm * 10) / 10,
     score,
+    fruitEntries,
+    vegLegumeEntries,
     treatEntries,
     sugaryDrinks,
     entriesCount: dayLogs.length,

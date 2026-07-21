@@ -24,8 +24,6 @@ export type FoodCategory =
   | 'Beverage' 
   | 'Other';
 
-export type DayType = 'Normal' | 'Travel' | 'Ritual / Festival' | 'Rest Day';
-
 export interface FoodItem {
   id: string;
   name: string;
@@ -56,25 +54,6 @@ export interface DailyLogEntry {
   waterMl: number;
   walkKm: number;
   notes?: string;
-}
-
-export interface DailyHabitRecord {
-  date: string;
-  dayType: DayType;
-  weightKg?: number;
-  waistInch?: number;
-  sleepStart?: string;
-  wakeTime?: string;
-  sleepHours?: number;
-  sleepQuality?: 'Poor' | 'Average' | 'Good' | 'Excellent';
-  walkKm: number;
-  waterMl: number;
-  stressLevel?: 'Low' | 'Medium' | 'High';
-  fruitEntries: number;
-  vegLegumeEntries: number;
-  treatEntries: number;
-  sugaryDrinksEntries: number;
-  dailyScore: number;
 }
 
 export interface HealthMetric {
@@ -141,6 +120,8 @@ export interface DailyNutritionSummary {
   totalWater: number;
   totalWalkKm: number;
   score: number;
+  fruitEntries: number;
+  vegLegumeEntries: number;
   treatEntries: number;
   sugaryDrinks: number;
   entriesCount: number;

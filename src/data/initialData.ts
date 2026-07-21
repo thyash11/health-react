@@ -3,7 +3,6 @@ import {
   UserProfile, 
   FoodItem, 
   DailyLogEntry, 
-  DailyHabitRecord, 
   HealthMetric, 
   LabTestRecord, 
   PeriodicCheckItem 
@@ -175,18 +174,6 @@ export const initialDailyLogs: DailyLogEntry[] = [
   { id: "log-197", date: "2026-07-20", meal: "Lunch", time: "2:00 PM", foodItem: "Peanut chutney", category: "Chutney", quantityGrams: 120, calories: 300, protein: 12, carbs: 15, fat: 24, fiber: 5, waterMl: 0, walkKm: 0, notes: "120 g" },
   { id: "log-198", date: "2026-07-20", meal: "Evening Snack", time: "7:00 PM", foodItem: "Murukku", category: "Snack", quantityGrams: 70, calories: 370, protein: 6, carbs: 42, fat: 20, fiber: 3, waterMl: 0, walkKm: 0, notes: "70 g at 7 PM" },
   { id: "log-199", date: "2026-07-20", meal: "Evening Snack", time: "7:00 PM", foodItem: "Sweet somasu", category: "Dessert", quantityGrams: 50, calories: 230, protein: 3, carbs: 30, fat: 11, fiber: 1, waterMl: 0, walkKm: 0, notes: "50 g at 7 PM; estimated" },
-];
-
-export const initialHabits: DailyHabitRecord[] = [
-  { date: "2026-07-12", dayType: "Normal", walkKm: 3.0, waterMl: 2800, fruitEntries: 0, vegLegumeEntries: 0, treatEntries: 3, sugaryDrinksEntries: 0, dailyScore: 51 },
-  { date: "2026-07-13", dayType: "Travel", walkKm: 3.0, waterMl: 3000, fruitEntries: 2, vegLegumeEntries: 0, treatEntries: 4, sugaryDrinksEntries: 1, dailyScore: 58 },
-  { date: "2026-07-14", dayType: "Ritual / Festival", walkKm: 0.0, waterMl: 2200, fruitEntries: 0, vegLegumeEntries: 2, treatEntries: 3, sugaryDrinksEntries: 0, dailyScore: 36 },
-  { date: "2026-07-15", dayType: "Normal", weightKg: 98.5, waistInch: 40.0, sleepHours: 7.0, sleepQuality: "Good", walkKm: 0.0, waterMl: 2200, stressLevel: "Medium", fruitEntries: 1, vegLegumeEntries: 1, treatEntries: 2, sugaryDrinksEntries: 0, dailyScore: 45 },
-  { date: "2026-07-16", dayType: "Normal", walkKm: 0.0, waterMl: 3000, fruitEntries: 0, vegLegumeEntries: 3, treatEntries: 0, sugaryDrinksEntries: 0, dailyScore: 53 },
-  { date: "2026-07-17", dayType: "Normal", walkKm: 3.0, waterMl: 1500, fruitEntries: 0, vegLegumeEntries: 1, treatEntries: 1, sugaryDrinksEntries: 0, dailyScore: 54 },
-  { date: "2026-07-18", dayType: "Normal", walkKm: 0.0, waterMl: 0, fruitEntries: 0, vegLegumeEntries: 1, treatEntries: 1, sugaryDrinksEntries: 0, dailyScore: 45 },
-  { date: "2026-07-19", dayType: "Normal", walkKm: 0.0, waterMl: 0, fruitEntries: 0, vegLegumeEntries: 1, treatEntries: 1, sugaryDrinksEntries: 0, dailyScore: 44 },
-  { date: "2026-07-20", dayType: "Normal", walkKm: 0.0, waterMl: 0, fruitEntries: 0, vegLegumeEntries: 0, treatEntries: 3, sugaryDrinksEntries: 0, dailyScore: 30 },
 ];
 
 export const initialHealthMetrics: HealthMetric[] = [

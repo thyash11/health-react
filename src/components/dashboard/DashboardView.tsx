@@ -25,11 +25,10 @@ interface DashboardViewProps {
 export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigateToFoodLog,
 }) => {
-  const { selectedDate, setSelectedDate, dailyLogs, habits, targets, profile } = useTracker();
+  const { selectedDate, setSelectedDate, dailyLogs, targets, profile } = useTracker();
 
   // Aggregate selected date
-  const summary = aggregateDailySummary(selectedDate, dailyLogs, habits, targets);
-  const dayHabit = habits.find((h) => h.date === selectedDate);
+  const summary = aggregateDailySummary(selectedDate, dailyLogs, targets);
 
   // Filter logs for selected date
   const dayLogs = dailyLogs.filter((l) => l.date === selectedDate);
@@ -67,7 +66,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   // Recent 10 dates list for summary table
   const uniqueDates = Array.from(
-    new Set([...dailyLogs.map((l) => l.date), ...habits.map((h) => h.date)])
+    new Set(dailyLogs.map((l) => l.date))
   ).sort().reverse().slice(0, 10);
 
   return (
@@ -89,11 +88,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <h2 className="text-xl font-bold text-slate-900">
                 {formatDateForDisplay(selectedDate)}
               </h2>
-              {dayHabit?.dayType && (
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200/80">
-                  {dayHabit.dayType}
-                </span>
-              )}
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
               Target: {targets.dailyCalories} kcal • {targets.proteinGrams}g Protein • {targets.fiberGrams}g Fiber
@@ -389,7 +383,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {uniqueDates.map((dateStr) => {
-                  const daySum = aggregateDailySummary(dateStr, dailyLogs, habits, targets);
+                  const daySum = aggregateDailySummary(dateStr, dailyLogs, targets);
                   const isSelected = dateStr === selectedDate;
                   const isOverCal = daySum.totalCalories > targets.dailyCalories;
 

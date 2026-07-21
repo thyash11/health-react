@@ -14,6 +14,7 @@ function MainApp() {
   useEffect(() => {
     localStorage.removeItem("nutrimetric_openai_settings_v1");
     sessionStorage.removeItem("nutrimetric_openai_key_session_v1");
+    localStorage.removeItem("health_tracker_habits_v1");
   }, []);
 
   return (
