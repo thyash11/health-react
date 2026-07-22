@@ -9,21 +9,39 @@ export const MEAL_TYPES = [
 ] as const;
 
 export const FOOD_CATEGORIES = [
-  "Breakfast",
-  "Chutney",
-  "Grain",
-  "Protein",
-  "Dessert",
-  "Snack",
+  "Rice Dishes",
+  "Millet Dishes",
+  "Batter Foods",
+  "Indian Breads",
+  "Savoury Grains",
+
+  "Pulses",
+  "Dal Curries",
+
+  "Poriyal",
+  "Vegetable Curries",
+  "Kuzhambu",
+  "Chutneys",
+
+  "Seafood",
+  "Dairy",
+  "Nuts",
+
+  "Fried Snacks",
+  "Fryums",
   "Bakery",
-  "Added Sugar",
-  "Fruit",
-  "Dal/Curry",
-  "Sugary Drink",
-  "Added Fat",
-  "Vegetable",
-  "Beverage",
-  "Other",
+  "Sweets",
+  "Frozen Desserts",
+
+  "Fruits",
+  "Sweet Drinks",
+  "Hot Drinks",
+
+  "Sweeteners",
+  "Cooking Fats",
+  "Dressings",
+  "Water",
+  "Other"
 ] as const;
 
 export const isMealType = (value: unknown): value is (typeof MEAL_TYPES)[number] =>
