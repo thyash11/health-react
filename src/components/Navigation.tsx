@@ -70,6 +70,9 @@ export const Navigation: React.FC<NavigationProps> = ({
             <div>
               <h1 className="text-xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
                 NutriMetric
+                <span className="mt-1 rounded-md border border-blue-300 font-extrabold bg-blue-50/60 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-blue-700">
+                  Pro
+                </span>
               </h1>
             </div>
           </div>
