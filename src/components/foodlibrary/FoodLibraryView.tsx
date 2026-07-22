@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { 
   BookOpen, 
   Search, 
@@ -9,7 +9,9 @@ import {
   Utensils, 
   X, 
   Check, 
-  Filter 
+  Filter,
+  Download,
+  Upload,
 } from "lucide-react";
 import { useTracker } from "../../context/TrackerContext";
 import { FoodItem, FoodCategory } from "../../types";
@@ -24,6 +26,7 @@ export const FoodLibraryView: React.FC<FoodLibraryViewProps> = ({ onLogFood }) =
   const { 
     foodLibrary, 
     addFoodItem, 
+    addBatchFoodItems,
     updateFoodItem, 
     deleteFoodItem, 
     toggleFavoriteFood, 
@@ -34,6 +37,8 @@ export const FoodLibraryView: React.FC<FoodLibraryViewProps> = ({ onLogFood }) =
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [showAddModal, setShowAddModal] = useState(false);
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const [importMessage, setImportMessage] = useState<{ type: "success" | "error"; text: string }>();
 
   // New Item State
   const [name, setName] = useState("");
@@ -46,6 +51,89 @@ export const FoodLibraryView: React.FC<FoodLibraryViewProps> = ({ onLogFood }) =
   const [fib100, setFib100] = useState<NumericDraft>("");
 
   const numericDraft = (value: string): NumericDraft => value === "" ? "" : Number(value);
+
+  const downloadFoodLibraryTemplate = () => {
+    const template = {
+      app: "NutriMetric",
+      purpose: "Food Library import template",
+      instructions: "Ask ChatGPT to replace the example or add more objects inside foods. Keep the same field names and return valid JSON only.",
+      allowedCategories: foodCategories,
+      foods: [
+        {
+          name: "Example food",
+          category: foodCategories[0] || "Other",
+          defaultServingGrams: 100,
+          caloriesPer100g: 100,
+          proteinPer100g: 5,
+          carbsPer100g: 15,
+          fatPer100g: 2,
+          fiberPer100g: 3,
+        },
+      ],
+    };
+    const blob = new Blob([JSON.stringify(template, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "nutrimetric-food-library-template.json";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importFoodLibraryJson = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    try {
+      const parsed: unknown = JSON.parse(await file.text());
+      const rawFoods = Array.isArray(parsed)
+        ? parsed
+        : parsed && typeof parsed === "object" && Array.isArray((parsed as { foods?: unknown }).foods)
+          ? (parsed as { foods: unknown[] }).foods
+          : null;
+      if (!rawFoods || rawFoods.length === 0) throw new Error("The JSON must contain a non-empty foods array.");
+
+      const numberField = (value: unknown, field: string, row: number, mustBePositive = false) => {
+        const number = Number(value);
+        if (!Number.isFinite(number) || number < 0 || (mustBePositive && number <= 0)) {
+          throw new Error(`Food ${row}: ${field} must be ${mustBePositive ? "greater than zero" : "zero or greater"}.`);
+        }
+        return number;
+      };
+
+      const seenNames = new Set(foodLibrary.map((item) => item.name.trim().toLowerCase()));
+      const foods: Omit<FoodItem, "id">[] = rawFoods.map((rawFood, index) => {
+        const row = index + 1;
+        if (!rawFood || typeof rawFood !== "object" || Array.isArray(rawFood)) throw new Error(`Food ${row} must be an object.`);
+        const value = rawFood as Record<string, unknown>;
+        const foodName = typeof value.name === "string" ? value.name.trim() : "";
+        if (!foodName) throw new Error(`Food ${row}: name is required.`);
+        if (seenNames.has(foodName.toLowerCase())) throw new Error(`Food ${row}: “${foodName}” is duplicated or already exists.`);
+        seenNames.add(foodName.toLowerCase());
+        if (typeof value.category !== "string" || !foodCategories.includes(value.category)) {
+          throw new Error(`Food ${row}: category must be one of ${foodCategories.join(", ")}.`);
+        }
+
+        return {
+          name: foodName,
+          category: value.category,
+          defaultServingGrams: numberField(value.defaultServingGrams, "defaultServingGrams", row, true),
+          caloriesPer100g: numberField(value.caloriesPer100g, "caloriesPer100g", row),
+          proteinPer100g: numberField(value.proteinPer100g, "proteinPer100g", row),
+          carbsPer100g: numberField(value.carbsPer100g, "carbsPer100g", row),
+          fatPer100g: numberField(value.fatPer100g, "fatPer100g", row),
+          fiberPer100g: numberField(value.fiberPer100g, "fiberPer100g", row),
+          isFavorite: false,
+        };
+      });
+
+      if (!addBatchFoodItems(foods)) return;
+      setImportMessage({ type: "success", text: `Imported ${foods.length} food ${foods.length === 1 ? "item" : "items"}.` });
+    } catch (error) {
+      setImportMessage({ type: "error", text: error instanceof Error ? error.message : "Could not import this JSON file." });
+    }
+  };
 
   const handleCreateFood = (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,14 +187,48 @@ export const FoodLibraryView: React.FC<FoodLibraryViewProps> = ({ onLogFood }) =
           <p className="text-xs text-slate-500 mt-0.5">
             Database of food items with macro density per 100g and default portion sizes
           </p>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="flex shrink-0 items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-blue-700 sm:px-4"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Custom Food</span>
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={downloadFoodLibraryTemplate}
+              title="Download JSON template for ChatGPT"
+              className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+            >
+              <Download className="h-4 w-4" />
+              <span className="hidden sm:inline">Sample JSON</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => importInputRef.current?.click()}
+              title="Import Food Library JSON"
+              className="flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition-colors hover:bg-blue-100"
+            >
+              <Upload className="h-4 w-4" />
+              <span className="hidden sm:inline">Import JSON</span>
+            </button>
+            <input
+              ref={importInputRef}
+              type="file"
+              accept="application/json,.json"
+              onChange={importFoodLibraryJson}
+              className="hidden"
+            />
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-blue-700 sm:px-4"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Custom Food</span>
+            </button>
+          </div>
         </div>
+        {importMessage && (
+          <p className={`mt-3 rounded-lg px-3 py-2 text-xs font-medium ${
+            importMessage.type === "success" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
+          }`}>
+            {importMessage.text}
+          </p>
+        )}
       </div>
 
       {/* Add Custom Food Modal */}

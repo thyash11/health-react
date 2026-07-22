@@ -49,7 +49,7 @@ export const TimePicker: React.FC<TimePickerProps> = ({ value, onChange }) => {
       </button>
 
       {open && (
-        <div role="dialog" aria-label="Choose time" className="absolute left-0 z-30 mt-2 w-64 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl">
+        <div role="dialog" aria-label="Choose time" className="absolute right-0 z-30 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-2xl border border-slate-200 bg-white p-3 shadow-xl">
           <div className="grid grid-cols-[1fr_1fr_1fr] gap-2">
             <label className="text-[11px] font-medium text-slate-500">
               Hour

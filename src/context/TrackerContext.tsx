@@ -29,6 +29,7 @@ interface TrackerContextType {
   updateProfile: (newProfile: Partial<UserProfile>) => void;
   foodLibrary: FoodItem[];
   addFoodItem: (item: Omit<FoodItem, "id">) => boolean;
+  addBatchFoodItems: (items: Omit<FoodItem, "id">[]) => boolean;
   updateFoodItem: (id: string, item: Partial<FoodItem>) => void;
   deleteFoodItem: (id: string) => void;
   toggleFavoriteFood: (id: string) => void;
@@ -178,6 +179,17 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return true;
   };
 
+  const addBatchFoodItems = (items: Omit<FoodItem, "id">[]) => {
+    if (!window.confirm(`Add ${items.length} food-library ${items.length === 1 ? "item" : "items"}?`)) return false;
+    const timestamp = Date.now();
+    const newItems: FoodItem[] = items.map((item, index) => ({
+      ...item,
+      id: `food-${timestamp}-${index}-${Math.random().toString(36).substring(2, 6)}`,
+    }));
+    setFoodLibrary((previous) => [...previous, ...newItems]);
+    return true;
+  };
+
   const updateFoodItem = (id: string, item: Partial<FoodItem>) => {
     setFoodLibrary((prev) => prev.map((f) => (f.id === id ? { ...f, ...item } : f)));
   };
@@ -309,6 +321,7 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
         updateProfile,
         foodLibrary,
         addFoodItem,
+        addBatchFoodItems,
         updateFoodItem,
         deleteFoodItem,
         toggleFavoriteFood,
