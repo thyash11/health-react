@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { 
   Plus, 
   Search as SearchIcon, 
@@ -12,10 +12,21 @@ import {
   Info 
 } from "lucide-react";
 import { useTracker } from "../../context/TrackerContext";
-import { DailyLogEntry, MealType, FoodCategory } from "../../types";
+import { DailyLogEntry, MealType, FoodCategory, FoodItem } from "../../types";
 import { formatDateForDisplay } from "../../utils/nutritionCalculator";
+import { MEAL_TYPES, isMealType } from "../../constants/foodOptions";
+import { TimePicker } from "../TimePicker";
 
-export const DailyFoodLogView: React.FC = () => {
+interface DailyFoodLogViewProps {
+  prefillFood?: FoodItem | null;
+  onPrefillConsumed?: () => void;
+}
+
+export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({
+  prefillFood,
+  onPrefillConsumed,
+}) => {
+  type NumericDraft = number | "";
   const { 
     selectedDate, 
     setSelectedDate, 
@@ -24,7 +35,8 @@ export const DailyFoodLogView: React.FC = () => {
     addBatchLogEntries,
     updateLogEntry, 
     deleteLogEntry, 
-    foodLibrary 
+    foodLibrary,
+    foodCategories,
   } = useTracker();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -39,21 +51,15 @@ export const DailyFoodLogView: React.FC = () => {
   const [formTime, setFormTime] = useState("10:30 AM");
   const [formFoodName, setFormFoodName] = useState("");
   const [formCategory, setFormCategory] = useState<FoodCategory>("Breakfast");
-  const [formQuantity, setFormQuantity] = useState<number>(100);
-  const [formCalories, setFormCalories] = useState<number>(150);
-  const [formProtein, setFormProtein] = useState<number>(5);
-  const [formCarbs, setFormCarbs] = useState<number>(20);
-  const [formFat, setFormFat] = useState<number>(3);
-  const [formFiber, setFormFiber] = useState<number>(2);
-  const [formWater, setFormWater] = useState<number>(0);
-  const [formWalk, setFormWalk] = useState<number>(0);
+  const [formQuantity, setFormQuantity] = useState<NumericDraft>("");
+  const [formCalories, setFormCalories] = useState<NumericDraft>("");
+  const [formProtein, setFormProtein] = useState<NumericDraft>("");
+  const [formCarbs, setFormCarbs] = useState<NumericDraft>("");
+  const [formFat, setFormFat] = useState<NumericDraft>("");
+  const [formFiber, setFormFiber] = useState<NumericDraft>("");
+  const [formWater, setFormWater] = useState<NumericDraft>("");
+  const [formWalk, setFormWalk] = useState<NumericDraft>("");
   const [formNotes, setFormNotes] = useState("");
-
-  const mealsList: MealType[] = ["Breakfast", "Lunch", "Evening Snack", "Mid snack", "Dinner", "Drink", "Other"];
-  const categoriesList: FoodCategory[] = [
-    "Breakfast", "Chutney", "Grain", "Protein", "Dessert", "Snack", 
-    "Bakery", "Added Sugar", "Fruit", "Dal/Curry", "Sugary Drink", "Added Fat", "Vegetable", "Beverage", "Other"
-  ];
 
   const sampleJson = JSON.stringify({
     date: selectedDate,
@@ -86,11 +92,13 @@ export const DailyFoodLogView: React.FC = () => {
     setFormFiber(Math.round(item.fiberPer100g * factor * 10) / 10);
   };
 
-  const handleQuantityChange = (newQty: number) => {
+  const numericDraft = (value: string): NumericDraft => value === "" ? "" : Number(value);
+
+  const handleQuantityChange = (newQty: NumericDraft) => {
     setFormQuantity(newQty);
     // Find matching food item in library to rescale
     const match = foodLibrary.find((f) => f.name.toLowerCase() === formFoodName.toLowerCase());
-    if (match && newQty > 0) {
+    if (match && newQty !== "" && newQty > 0) {
       const factor = newQty / 100;
       setFormCalories(Math.round(match.caloriesPer100g * factor));
       setFormProtein(Math.round(match.proteinPer100g * factor * 10) / 10);
@@ -100,11 +108,29 @@ export const DailyFoodLogView: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    if (!prefillFood) return;
+    setEditingId(null);
+    handleSelectLibraryItem(prefillFood);
+    setShowAddForm(true);
+    onPrefillConsumed?.();
+  }, [prefillFood]);
+
   const handleSaveEntry = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formFoodName.trim()) return;
+    if (!formFoodName.trim() || formQuantity === "" || formQuantity <= 0) return;
 
     if (editingId) {
+      const originalEntry = dailyLogs.find((entry) => entry.id === editingId);
+      const today = new Date().toLocaleDateString("en-CA");
+      const recordDate = originalEntry?.date || selectedDate;
+      if (
+        recordDate < today &&
+        !window.confirm(
+          `This entry is from an old date (${formatDateForDisplay(recordDate)}). Do you want to update it?`,
+        )
+      ) return;
+
       updateLogEntry(editingId, {
         date: selectedDate,
         meal: formMeal,
@@ -123,7 +149,7 @@ export const DailyFoodLogView: React.FC = () => {
       });
       setEditingId(null);
     } else {
-      addLogEntry({
+      const added = addLogEntry({
         date: selectedDate,
         meal: formMeal,
         time: formTime,
@@ -139,11 +165,20 @@ export const DailyFoodLogView: React.FC = () => {
         walkKm: Number(formWalk),
         notes: formNotes,
       });
+      if (!added) return;
     }
 
     // Reset form
     setFormFoodName("");
     setFormNotes("");
+    setFormQuantity("");
+    setFormCalories("");
+    setFormProtein("");
+    setFormCarbs("");
+    setFormFat("");
+    setFormFiber("");
+    setFormWater("");
+    setFormWalk("");
     setShowAddForm(false);
   };
 
@@ -194,11 +229,11 @@ export const DailyFoodLogView: React.FC = () => {
         const value = item as Record<string, unknown>;
         const foodItem = typeof value.foodItem === "string" ? value.foodItem.trim() : "";
         if (!foodItem) throw new Error(`Entry ${row}: foodItem is required.`);
-        if (!mealsList.includes(value.meal as MealType)) {
-          throw new Error(`Entry ${row}: meal must be one of ${mealsList.join(", ")}.`);
+        if (!isMealType(value.meal)) {
+          throw new Error(`Entry ${row}: meal must be one of ${MEAL_TYPES.join(", ")}.`);
         }
-        if (!categoriesList.includes(value.category as FoodCategory)) {
-          throw new Error(`Entry ${row}: category must be one of ${categoriesList.join(", ")}.`);
+        if (typeof value.category !== "string" || !foodCategories.includes(value.category)) {
+          throw new Error(`Entry ${row}: category must be one of ${foodCategories.join(", ")}.`);
         }
 
         const date = typeof value.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value.date)
@@ -207,10 +242,10 @@ export const DailyFoodLogView: React.FC = () => {
 
         return {
           date,
-          meal: value.meal as MealType,
+          meal: value.meal,
           time: typeof value.time === "string" && value.time.trim() ? value.time.trim() : "10:30 AM",
           foodItem,
-          category: value.category as FoodCategory,
+          category: value.category,
           quantityGrams: numberValue(value.quantityGrams, "quantityGrams", row),
           calories: numberValue(value.calories, "calories", row),
           protein: numberValue(value.protein, "protein", row),
@@ -223,7 +258,7 @@ export const DailyFoodLogView: React.FC = () => {
         };
       });
 
-      addBatchLogEntries(entries);
+      if (!addBatchLogEntries(entries)) return;
       setJsonInput("");
       setJsonMessage({ type: "success", text: `Added ${entries.length} food ${entries.length === 1 ? "entry" : "entries"}.` });
     } catch (error) {
@@ -309,7 +344,7 @@ export const DailyFoodLogView: React.FC = () => {
                 onChange={(e) => setFormMeal(e.target.value as MealType)}
                 className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               >
-                {mealsList.map((m) => (
+                {MEAL_TYPES.map((m) => (
                   <option key={m} value={m}>{m}</option>
                 ))}
               </select>
@@ -318,13 +353,7 @@ export const DailyFoodLogView: React.FC = () => {
             {/* Time */}
             <div>
               <label className="text-slate-500 block mb-1">Time</label>
-              <input
-                type="text"
-                value={formTime}
-                onChange={(e) => setFormTime(e.target.value)}
-                placeholder="10:30 AM"
-                className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              />
+              <TimePicker value={formTime} onChange={setFormTime} />
             </div>
 
             {/* Food Name */}
@@ -348,7 +377,7 @@ export const DailyFoodLogView: React.FC = () => {
                 onChange={(e) => setFormCategory(e.target.value as FoodCategory)}
                 className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               >
-                {categoriesList.map((c) => (
+                {foodCategories.map((c) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>
@@ -360,8 +389,10 @@ export const DailyFoodLogView: React.FC = () => {
               <input
                 type="number"
                 value={formQuantity}
-                onChange={(e) => handleQuantityChange(Number(e.target.value))}
+                onChange={(e) => handleQuantityChange(numericDraft(e.target.value))}
+                onFocus={(e) => e.currentTarget.select()}
                 min={1}
+                required
                 className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-bold rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
@@ -372,7 +403,8 @@ export const DailyFoodLogView: React.FC = () => {
               <input
                 type="number"
                 value={formCalories}
-                onChange={(e) => setFormCalories(Number(e.target.value))}
+                onChange={(e) => setFormCalories(numericDraft(e.target.value))}
+                onFocus={(e) => e.currentTarget.select()}
                 className="w-full bg-slate-50 border border-slate-200 text-amber-600 font-bold rounded-xl p-2.5"
               />
             </div>
@@ -384,7 +416,8 @@ export const DailyFoodLogView: React.FC = () => {
                 type="number"
                 step="0.1"
                 value={formProtein}
-                onChange={(e) => setFormProtein(Number(e.target.value))}
+                onChange={(e) => setFormProtein(numericDraft(e.target.value))}
+                onFocus={(e) => e.currentTarget.select()}
                 className="w-full bg-slate-50 border border-slate-200 text-emerald-600 font-bold rounded-xl p-2.5"
               />
             </div>
@@ -396,7 +429,8 @@ export const DailyFoodLogView: React.FC = () => {
                 type="number"
                 step="0.1"
                 value={formCarbs}
-                onChange={(e) => setFormCarbs(Number(e.target.value))}
+                onChange={(e) => setFormCarbs(numericDraft(e.target.value))}
+                onFocus={(e) => e.currentTarget.select()}
                 className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-2.5"
               />
             </div>
@@ -408,7 +442,8 @@ export const DailyFoodLogView: React.FC = () => {
                 type="number"
                 step="0.1"
                 value={formFat}
-                onChange={(e) => setFormFat(Number(e.target.value))}
+                onChange={(e) => setFormFat(numericDraft(e.target.value))}
+                onFocus={(e) => e.currentTarget.select()}
                 className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-2.5"
               />
             </div>
@@ -420,7 +455,8 @@ export const DailyFoodLogView: React.FC = () => {
                 type="number"
                 step="0.1"
                 value={formFiber}
-                onChange={(e) => setFormFiber(Number(e.target.value))}
+                onChange={(e) => setFormFiber(numericDraft(e.target.value))}
+                onFocus={(e) => e.currentTarget.select()}
                 className="w-full bg-slate-50 border border-slate-200 text-teal-600 font-bold rounded-xl p-2.5"
               />
             </div>
@@ -431,8 +467,8 @@ export const DailyFoodLogView: React.FC = () => {
               <input
                 type="number"
                 value={formWater}
-                onChange={(e) => setFormWater(Number(e.target.value))}
-                placeholder="0"
+                onChange={(e) => setFormWater(numericDraft(e.target.value))}
+                onFocus={(e) => e.currentTarget.select()}
                 className="w-full bg-slate-50 border border-slate-200 text-cyan-600 rounded-xl p-2.5"
               />
             </div>
@@ -444,8 +480,8 @@ export const DailyFoodLogView: React.FC = () => {
                 type="number"
                 step="0.1"
                 value={formWalk}
-                onChange={(e) => setFormWalk(Number(e.target.value))}
-                placeholder="0.0"
+                onChange={(e) => setFormWalk(numericDraft(e.target.value))}
+                onFocus={(e) => e.currentTarget.select()}
                 className="w-full bg-slate-50 border border-slate-200 text-indigo-600 rounded-xl p-2.5"
               />
             </div>
@@ -519,7 +555,7 @@ export const DailyFoodLogView: React.FC = () => {
         {/* Meal Filter Chips */}
         <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 scrollbar-none">
           <Filter className="w-3.5 h-3.5 text-slate-400 mr-1 shrink-0" />
-          {["All", ...mealsList].map((m) => (
+          {["All", ...MEAL_TYPES].map((m) => (
             <button
               key={m}
               onClick={() => setSelectedMealFilter(m)}
@@ -575,7 +611,7 @@ export const DailyFoodLogView: React.FC = () => {
                     <td className="p-3 font-semibold text-slate-900">{log.meal}</td>
                     <td className="p-3 text-slate-400 text-[11px] whitespace-nowrap">{log.time || "—"}</td>
                     <td className="p-3">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                      <span className="inline-block max-w-28 whitespace-normal break-words rounded-md border border-slate-200 bg-slate-100 px-2 py-1 text-center text-[10px] font-semibold leading-tight text-slate-700">
                         {log.category}
                       </span>
                     </td>
@@ -644,30 +680,6 @@ export const DailyFoodLogView: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="space-y-2 min-w-0">
-            <div className="flex items-center justify-between gap-2">
-              <label className="text-xs font-semibold text-slate-700">Sample single object</label>
-              <button
-                type="button"
-                onClick={async () => {
-                  try {
-                    await navigator.clipboard.writeText(sampleJson);
-                    setJsonMessage({ type: "success", text: "Sample JSON copied." });
-                  } catch {
-                    setJsonInput(sampleJson);
-                    setJsonMessage({ type: "success", text: "Sample JSON placed in the input box." });
-                  }
-                }}
-                className="text-[11px] font-semibold text-blue-600 hover:text-blue-700"
-              >
-                Copy sample
-              </button>
-            </div>
-            <pre className="max-h-80 overflow-auto whitespace-pre rounded-xl bg-slate-900 p-3 text-[11px] leading-relaxed text-slate-100">{sampleJson}</pre>
-            <p className="text-[10px] leading-relaxed text-slate-500">
-              Meal values: {mealsList.join(", ")}. Category values: {categoriesList.join(", ")}.
-            </p>
-          </div>
 
           <div className="space-y-2 min-w-0">
             <label htmlFor="food-log-json" className="text-xs font-semibold text-slate-700">Paste JSON here</label>
@@ -711,6 +723,30 @@ export const DailyFoodLogView: React.FC = () => {
                 Import JSON
               </button>
             </div>
+          </div>
+          <div className="space-y-2 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <label className="text-xs font-semibold text-slate-700">Sample single object</label>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(sampleJson);
+                    setJsonMessage({ type: "success", text: "Sample JSON copied." });
+                  } catch {
+                    setJsonInput(sampleJson);
+                    setJsonMessage({ type: "success", text: "Sample JSON placed in the input box." });
+                  }
+                }}
+                className="text-[11px] font-semibold text-blue-600 hover:text-blue-700"
+              >
+                Copy sample
+              </button>
+            </div>
+            <pre className="max-h-80 overflow-auto whitespace-pre rounded-xl bg-slate-900 p-3 text-[11px] leading-relaxed text-slate-100">{sampleJson}</pre>
+            <p className="text-[10px] leading-relaxed text-slate-500">
+              Meal values: {MEAL_TYPES.join(", ")}. Category values: {foodCategories.join(", ")}.
+            </p>
           </div>
         </div>
       </section>

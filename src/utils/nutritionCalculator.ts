@@ -11,6 +11,13 @@ export function calculateDailyHealthScore(
   targets: PersonalTargets
 ): number {
   if (calories === 0 && protein === 0) return 0;
+  if (
+    targets.dailyCalories <= 0 ||
+    targets.proteinGrams <= 0 ||
+    targets.fiberGrams <= 0 ||
+    targets.waterMl <= 0 ||
+    targets.walkKm <= 0
+  ) return 0;
 
   let score = 0;
 

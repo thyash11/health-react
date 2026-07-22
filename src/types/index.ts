@@ -1,28 +1,7 @@
-export type MealType = 
-  | 'Breakfast' 
-  | 'Lunch' 
-  | 'Evening Snack' 
-  | 'Mid snack' 
-  | 'Dinner' 
-  | 'Drink' 
-  | 'Other';
+import { MEAL_TYPES } from "../constants/foodOptions";
 
-export type FoodCategory = 
-  | 'Breakfast' 
-  | 'Chutney' 
-  | 'Grain' 
-  | 'Protein' 
-  | 'Dessert' 
-  | 'Snack' 
-  | 'Bakery' 
-  | 'Added Sugar' 
-  | 'Fruit' 
-  | 'Dal/Curry' 
-  | 'Sugary Drink' 
-  | 'Added Fat' 
-  | 'Vegetable' 
-  | 'Beverage' 
-  | 'Other';
+export type MealType = (typeof MEAL_TYPES)[number];
+export type FoodCategory = string;
 
 export interface FoodItem {
   id: string;

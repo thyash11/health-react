@@ -15,15 +15,20 @@ import { useTracker } from "../../context/TrackerContext";
 import { FoodItem, FoodCategory } from "../../types";
 import { formatDateForDisplay } from "../../utils/nutritionCalculator";
 
-export const FoodLibraryView: React.FC = () => {
+interface FoodLibraryViewProps {
+  onLogFood: (food: FoodItem) => void;
+}
+
+export const FoodLibraryView: React.FC<FoodLibraryViewProps> = ({ onLogFood }) => {
+  type NumericDraft = number | "";
   const { 
     foodLibrary, 
     addFoodItem, 
     updateFoodItem, 
     deleteFoodItem, 
     toggleFavoriteFood, 
-    addLogEntry, 
-    selectedDate 
+    selectedDate,
+    foodCategories,
   } = useTracker();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -33,23 +38,20 @@ export const FoodLibraryView: React.FC = () => {
   // New Item State
   const [name, setName] = useState("");
   const [category, setCategory] = useState<FoodCategory>("Breakfast");
-  const [serving, setServing] = useState(100);
-  const [cal100, setCal100] = useState(150);
-  const [p100, setP100] = useState(5);
-  const [c100, setC100] = useState(20);
-  const [f100, setF100] = useState(3);
-  const [fib100, setFib100] = useState(2);
+  const [serving, setServing] = useState<NumericDraft>("");
+  const [cal100, setCal100] = useState<NumericDraft>("");
+  const [p100, setP100] = useState<NumericDraft>("");
+  const [c100, setC100] = useState<NumericDraft>("");
+  const [f100, setF100] = useState<NumericDraft>("");
+  const [fib100, setFib100] = useState<NumericDraft>("");
 
-  const categoriesList: FoodCategory[] = [
-    "Breakfast", "Chutney", "Grain", "Protein", "Dessert", "Snack", 
-    "Bakery", "Added Sugar", "Fruit", "Dal/Curry", "Sugary Drink", "Added Fat", "Vegetable", "Beverage", "Other"
-  ];
+  const numericDraft = (value: string): NumericDraft => value === "" ? "" : Number(value);
 
   const handleCreateFood = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || serving === "" || serving <= 0) return;
 
-    addFoodItem({
+    const added = addFoodItem({
       name,
       category,
       defaultServingGrams: Number(serving),
@@ -60,30 +62,20 @@ export const FoodLibraryView: React.FC = () => {
       fiberPer100g: Number(fib100),
       isFavorite: false,
     });
+    if (!added) return;
 
     setName("");
+    setServing("");
+    setCal100("");
+    setP100("");
+    setC100("");
+    setF100("");
+    setFib100("");
     setShowAddModal(false);
   };
 
   const quickLogFood = (item: FoodItem) => {
-    const factor = item.defaultServingGrams / 100;
-    addLogEntry({
-      date: selectedDate,
-      meal: item.category === "Breakfast" ? "Breakfast" : item.category === "Protein" ? "Lunch" : "Evening Snack",
-      time: "12:00 PM",
-      foodItem: item.name,
-      category: item.category,
-      quantityGrams: item.defaultServingGrams,
-      calories: Math.round(item.caloriesPer100g * factor),
-      protein: Math.round(item.proteinPer100g * factor * 10) / 10,
-      carbs: Math.round(item.carbsPer100g * factor * 10) / 10,
-      fat: Math.round(item.fatPer100g * factor * 10) / 10,
-      fiber: Math.round(item.fiberPer100g * factor * 10) / 10,
-      waterMl: 0,
-      walkKm: 0,
-      notes: `Logged from Food Library (${item.defaultServingGrams}g)`,
-    });
-    alert(`Logged ${item.name} (${item.defaultServingGrams}g) for ${formatDateForDisplay(selectedDate)}!`);
+    onLogFood(item);
   };
 
   const filteredItems = foodLibrary.filter((item) => {
@@ -155,7 +147,7 @@ export const FoodLibraryView: React.FC = () => {
                 onChange={(e) => setCategory(e.target.value as FoodCategory)}
                 className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl p-2.5"
               >
-                {categoriesList.map((c) => (
+                {foodCategories.map((c) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>
@@ -166,7 +158,10 @@ export const FoodLibraryView: React.FC = () => {
               <input
                 type="number"
                 value={serving}
-                onChange={(e) => setServing(Number(e.target.value))}
+                onChange={(e) => setServing(numericDraft(e.target.value))}
+                onFocus={(e) => e.currentTarget.select()}
+                min={1}
+                required
                 className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl p-2.5 font-bold"
               />
             </div>
@@ -176,7 +171,8 @@ export const FoodLibraryView: React.FC = () => {
               <input
                 type="number"
                 value={cal100}
-                onChange={(e) => setCal100(Number(e.target.value))}
+                onChange={(e) => setCal100(numericDraft(e.target.value))}
+                onFocus={(e) => e.currentTarget.select()}
                 className="w-full bg-slate-50 border border-slate-200 text-amber-600 font-bold rounded-xl p-2.5"
               />
             </div>
@@ -187,7 +183,8 @@ export const FoodLibraryView: React.FC = () => {
                 type="number"
                 step="0.1"
                 value={p100}
-                onChange={(e) => setP100(Number(e.target.value))}
+                onChange={(e) => setP100(numericDraft(e.target.value))}
+                onFocus={(e) => e.currentTarget.select()}
                 className="w-full bg-slate-50 border border-slate-200 text-emerald-600 font-bold rounded-xl p-2.5"
               />
             </div>
@@ -198,7 +195,8 @@ export const FoodLibraryView: React.FC = () => {
                 type="number"
                 step="0.1"
                 value={c100}
-                onChange={(e) => setC100(Number(e.target.value))}
+                onChange={(e) => setC100(numericDraft(e.target.value))}
+                onFocus={(e) => e.currentTarget.select()}
                 className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-2.5"
               />
             </div>
@@ -209,7 +207,8 @@ export const FoodLibraryView: React.FC = () => {
                 type="number"
                 step="0.1"
                 value={f100}
-                onChange={(e) => setF100(Number(e.target.value))}
+                onChange={(e) => setF100(numericDraft(e.target.value))}
+                onFocus={(e) => e.currentTarget.select()}
                 className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-2.5"
               />
             </div>
@@ -220,7 +219,8 @@ export const FoodLibraryView: React.FC = () => {
                 type="number"
                 step="0.1"
                 value={fib100}
-                onChange={(e) => setFib100(Number(e.target.value))}
+                onChange={(e) => setFib100(numericDraft(e.target.value))}
+                onFocus={(e) => e.currentTarget.select()}
                 className="w-full bg-slate-50 border border-slate-200 text-teal-600 font-bold rounded-xl p-2.5"
               />
             </div>
@@ -261,7 +261,7 @@ export const FoodLibraryView: React.FC = () => {
 
         <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto scrollbar-none pb-1 sm:pb-0">
           <Filter className="w-3.5 h-3.5 text-slate-400 mr-1 shrink-0" />
-          {["All", ...categoriesList].map((cat) => (
+          {["All", ...foodCategories].map((cat) => (
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}

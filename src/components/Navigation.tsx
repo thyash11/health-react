@@ -13,7 +13,7 @@ import {
 import { useTracker } from "../context/TrackerContext";
 import { FormattedDateInput } from "./FormattedDateInput";
 
-export type TabType = "dashboard" | "foodlog" | "habits" | "analytics" | "library" | "health";
+export type TabType = "dashboard" | "foodlog" | "habits" | "analytics" | "library" | "health" | "categories" | "settings";
 
 interface NavigationProps {
   activeTab: TabType;
@@ -78,9 +78,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             {/* Selected Date Picker */}
             <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl px-2 sm:px-3 py-1.5 text-xs text-slate-700">
-              <Calendar className="hidden sm:block w-3.5 h-3.5 mr-1.5 text-blue-600 shrink-0" />
-              <span className="font-medium mr-2 text-slate-500 hidden sm:inline">Active Date:</span>
-              <button
+            <button
                 type="button"
                 onClick={() => shiftSelectedDate(-1)}
                 aria-label="Previous day"

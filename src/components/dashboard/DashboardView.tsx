@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { useTracker } from "../../context/TrackerContext";
 import { aggregateDailySummary, getScoreColor, formatDateForDisplay } from "../../utils/nutritionCalculator";
-import { MealType } from "../../types";
+import { MEAL_TYPES } from "../../constants/foodOptions";
 
 interface DashboardViewProps {
   onNavigateToFoodLog: () => void;
@@ -31,8 +31,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const dayLogs = dailyLogs.filter((l) => l.date === selectedDate);
 
   // Meals grouping
-  const mealsList: MealType[] = ["Breakfast", "Lunch", "Evening Snack", "Mid snack", "Dinner", "Drink", "Other"];
-  const mealBreakdown = mealsList.map((meal) => {
+  const mealBreakdown = MEAL_TYPES.map((meal) => {
     const items = dayLogs.filter((l) => l.meal === meal);
     const calories = items.reduce((acc, i) => acc + (i.calories || 0), 0);
     const protein = items.reduce((acc, i) => acc + (i.protein || 0), 0);
@@ -43,11 +42,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   });
 
   // Calculate percentage of targets
-  const calPct = Math.round((summary.totalCalories / targets.dailyCalories) * 100);
-  const proteinPct = Math.round((summary.totalProtein / targets.proteinGrams) * 100);
-  const fiberPct = Math.round((summary.totalFiber / targets.fiberGrams) * 100);
-  const waterPct = Math.round((summary.totalWater / targets.waterMl) * 100);
-  const walkPct = Math.round((summary.totalWalkKm / targets.walkKm) * 100);
+  const percentOf = (value: number, target: number) =>
+    target > 0 ? Math.round((value / target) * 100) : 0;
+  const calPct = percentOf(summary.totalCalories, targets.dailyCalories);
+  const proteinPct = percentOf(summary.totalProtein, targets.proteinGrams);
+  const fiberPct = percentOf(summary.totalFiber, targets.fiberGrams);
+  const waterPct = percentOf(summary.totalWater, targets.waterMl);
+  const walkPct = percentOf(summary.totalWalkKm, targets.walkKm);
 
   const scoreInfo = getScoreColor(summary.score);
 

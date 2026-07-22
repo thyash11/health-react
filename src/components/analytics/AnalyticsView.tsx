@@ -94,8 +94,8 @@ export const AnalyticsView: React.FC = () => {
     <div className="space-y-6 pb-12">
       
       {/* Title & Timeframe Selector */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
-        <div>
+      <div className="flex justify-end rounded-2xl border border-slate-200/80 bg-white p-2 shadow-sm sm:items-center sm:justify-between sm:gap-3 sm:p-4">
+        <div className="hidden sm:block">
           <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-blue-600" />
             Nutritional Intake Trends & Performance Analytics
@@ -106,36 +106,36 @@ export const AnalyticsView: React.FC = () => {
         </div>
 
         {/* Timeframe selector tabs */}
-        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200/80 text-xs font-semibold">
+        <div className="grid w-full grid-cols-3 items-center gap-1 whitespace-nowrap rounded-xl border border-slate-200/80 bg-slate-100 p-1 text-[11px] font-semibold sm:w-auto sm:text-xs">
           <button
             onClick={() => setTimeframe("week")}
-            className={`px-3 py-1.5 rounded-lg transition-colors ${
+            className={`min-w-0 px-2 py-1.5 rounded-lg text-center transition-colors sm:px-3 ${
               timeframe === "week"
                 ? "bg-white text-blue-700 border border-blue-200 shadow-xs"
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            Last 7 Days (Week)
+            Last 7 Days <span className="hidden sm:inline">(Week)</span>
           </button>
           <button
             onClick={() => setTimeframe("month")}
-            className={`px-3 py-1.5 rounded-lg transition-colors ${
+            className={`min-w-0 px-2 py-1.5 rounded-lg text-center transition-colors sm:px-3 ${
               timeframe === "month"
                 ? "bg-white text-blue-700 border border-blue-200 shadow-xs"
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            Last 30 Days (Month)
+            Last 30 Days <span className="hidden sm:inline">(Month)</span>
           </button>
           <button
             onClick={() => setTimeframe("all")}
-            className={`px-3 py-1.5 rounded-lg transition-colors ${
+            className={`min-w-0 px-2 py-1.5 rounded-lg text-center transition-colors sm:px-3 ${
               timeframe === "all"
                 ? "bg-white text-blue-700 border border-blue-200 shadow-xs"
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            All Available Data
+            All Data
           </button>
         </div>
       </div>

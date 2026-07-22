@@ -40,16 +40,6 @@ export const HabitsView: React.FC = () => {
               </div>
             ))}
           </div>
-
-          <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-4">
-            <h3 className="text-sm font-bold text-slate-900">Score inputs calculated from the daily log</h3>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3"><span className="text-slate-500 block">Calories</span><strong className="text-slate-900">{summary.totalCalories} kcal</strong></div>
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3"><span className="text-slate-500 block">Protein</span><strong className="text-emerald-700">{summary.totalProtein} g</strong></div>
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3"><span className="text-slate-500 block">Fiber</span><strong className="text-teal-700">{summary.totalFiber} g</strong></div>
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3"><span className="text-slate-500 block">Log entries</span><strong className="text-blue-700">{summary.entriesCount}</strong></div>
-            </div>
-          </div>
         </>
       )}
     </div>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { 
   HeartPulse, 
   Target, 
@@ -9,7 +9,8 @@ import {
   AlertTriangle, 
   CheckCircle2, 
   Trash2, 
-  Save 
+  Save,
+  X,
 } from "lucide-react";
 import { useTracker } from "../../context/TrackerContext";
 import { LabTestRecord, HealthMetric } from "../../types";
@@ -49,6 +50,19 @@ export const HealthLabsView: React.FC = () => {
   const [testStatus, setTestStatus] = useState<LabTestRecord["status"]>("Normal");
   const [testNotes, setTestNotes] = useState("");
 
+  useEffect(() => {
+    if (!showAddLab) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setShowAddLab(false);
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", closeOnEscape);
+      document.body.style.overflow = "";
+    };
+  }, [showAddLab]);
+
   const handleSaveTargets = (e: React.FormEvent) => {
     e.preventDefault();
     updateTargets({
@@ -66,7 +80,7 @@ export const HealthLabsView: React.FC = () => {
     e.preventDefault();
     if (!testName || testResult === "") return;
 
-    addLabTest({
+    const added = addLabTest({
       date: testDate,
       testName,
       resultValue: Number(testResult),
@@ -75,6 +89,7 @@ export const HealthLabsView: React.FC = () => {
       status: testStatus,
       notes: testNotes,
     });
+    if (!added) return;
 
     setTestName("");
     setTestResult("");
@@ -231,7 +246,7 @@ export const HealthLabsView: React.FC = () => {
           </div>
 
           <button
-            onClick={() => setShowAddLab(!showAddLab)}
+            onClick={() => setShowAddLab(true)}
             className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs rounded-xl flex items-center gap-1.5 transition-colors border border-slate-200"
           >
             <Plus className="w-4 h-4" />
@@ -241,8 +256,25 @@ export const HealthLabsView: React.FC = () => {
 
         {/* Add Lab Form */}
         {showAddLab && (
-          <form onSubmit={handleCreateLabTest} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3 text-xs">
-            <h4 className="font-bold text-slate-900 text-xs">New Clinical Test Record</h4>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="add-lab-test-title"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) setShowAddLab(false);
+            }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm"
+          >
+          <form onSubmit={handleCreateLabTest} className="max-h-[90vh] w-full max-w-3xl space-y-4 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 text-xs shadow-2xl sm:p-6">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h4 id="add-lab-test-title" className="text-base font-bold text-slate-900">New Clinical Test Record</h4>
+                <p className="mt-0.5 text-xs text-slate-500">Add a dated result to your clinical lab history.</p>
+              </div>
+              <button type="button" onClick={() => setShowAddLab(false)} aria-label="Close add lab test" className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
             
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div>
@@ -263,6 +295,7 @@ export const HealthLabsView: React.FC = () => {
                   onChange={(e) => setTestName(e.target.value)}
                   placeholder="e.g. Total Cholesterol, HbA1c"
                   required
+                  autoFocus
                   className="w-full bg-white border border-slate-200 text-slate-900 rounded-xl p-2.5"
                 />
               </div>
@@ -333,18 +366,19 @@ export const HealthLabsView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setShowAddLab(false)}
-                className="px-3 py-1.5 bg-slate-200 text-slate-700 font-medium rounded-xl"
+                className="rounded-xl bg-slate-100 px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-200"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs"
+                className="rounded-xl bg-blue-600 px-4 py-2.5 font-bold text-white shadow-xs hover:bg-blue-700"
               >
                 Save Record
               </button>
             </div>
           </form>
+          </div>
         )}
 
         {/* Table */}
