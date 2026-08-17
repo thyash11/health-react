@@ -31,9 +31,9 @@ export const Navigation: React.FC<NavigationProps> = ({
   const navItems = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "foodlog", label: "Daily Food Log", icon: UtensilsCrossed },
+    { id: "library", label: "Food Library", icon: BookOpen },
     { id: "habits", label: "Habits & Activity", icon: Activity },
     { id: "analytics", label: "Trends & Analytics", icon: TrendingUp },
-    { id: "library", label: "Food Library", icon: BookOpen },
     { id: "health", label: "Health & Labs", icon: HeartPulse },
   ] as const;
 

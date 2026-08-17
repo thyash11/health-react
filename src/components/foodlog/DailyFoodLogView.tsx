@@ -15,8 +15,9 @@ import {
 import { useTracker } from "../../context/TrackerContext";
 import { DailyLogEntry, MealType, FoodCategory, FoodItem } from "../../types";
 import { formatDateForDisplay } from "../../utils/nutritionCalculator";
-import { MEAL_TYPES, isMealType } from "../../constants/foodOptions";
+import { MEAL_DEFAULT_TIMES, MEAL_TYPES, isMealType } from "../../constants/foodOptions";
 import { TimePicker } from "../TimePicker";
+import { sortDailyLogs } from "../../utils/logSorting";
 
 interface DailyFoodLogViewProps {
   prefillFood?: FoodItem | null;
@@ -62,6 +63,7 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({
   const [formWater, setFormWater] = useState<NumericDraft>("");
   const [formWalk, setFormWalk] = useState<NumericDraft>("");
   const [formNotes, setFormNotes] = useState("");
+  const [showFoodSuggestions, setShowFoodSuggestions] = useState(false);
 
   const sampleJson = JSON.stringify({
     date: selectedDate,
@@ -269,7 +271,7 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({
   };
 
   // Filter logs by date, search query and meal
-  const filteredLogs = dailyLogs.filter((log) => {
+  const filteredLogs = sortDailyLogs(dailyLogs.filter((log) => {
     const dateMatch = log.date === selectedDate;
     const searchMatch =
       log.foodItem.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -277,7 +279,7 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({
       (log.notes && log.notes.toLowerCase().includes(searchQuery.toLowerCase()));
     const mealMatch = selectedMealFilter === "All" || log.meal === selectedMealFilter;
     return dateMatch && searchMatch && mealMatch;
-  });
+  }));
 
   // Calculate totals
   const totalCal = filteredLogs.reduce((acc, l) => acc + (l.calories || 0), 0);
@@ -286,6 +288,12 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({
   const totalFat = filteredLogs.reduce((acc, l) => acc + (l.fat || 0), 0);
   const totalFiber = filteredLogs.reduce((acc, l) => acc + (l.fiber || 0), 0);
   const totalWater = filteredLogs.reduce((acc, l) => acc + (l.waterMl || 0), 0);
+  const foodSuggestions = foodLibrary
+    .filter((food) => {
+      const query = formFoodName.trim().toLowerCase();
+      return !query || food.name.toLowerCase().includes(query) || food.category.toLowerCase().includes(query);
+    })
+    .slice(0, 8);
 
   return (
     <div className="space-y-6 pb-12">
@@ -318,23 +326,6 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({
             </div>
           </div>
 
-          {/* Quick Library Picker Suggestion Chips */}
-          <div className="space-y-1.5">
-            <label className="text-xs text-slate-500 font-medium">Quick Pick from Food Library:</label>
-            <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
-              {foodLibrary.slice(0, 14).map((f) => (
-                <button
-                  type="button"
-                  key={f.id}
-                  onClick={() => handleSelectLibraryItem(f)}
-                  className="px-2.5 py-1 bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 text-xs rounded-lg transition-colors border border-slate-200/80 font-medium"
-                >
-                  {f.name} ({f.defaultServingGrams}g)
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Form Fields Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
             
@@ -343,7 +334,12 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({
               <label className="text-slate-500 block mb-1">Meal Type</label>
               <select
                 value={formMeal}
-                onChange={(e) => setFormMeal(e.target.value as MealType)}
+                onChange={(e) => {
+                  const meal = e.target.value as MealType;
+                  setFormMeal(meal);
+                  const defaultTime = MEAL_DEFAULT_TIMES[meal];
+                  if (defaultTime) setFormTime(defaultTime);
+                }}
                 className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               >
                 {MEAL_TYPES.map((m) => (
@@ -359,16 +355,46 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({
             </div>
 
             {/* Food Name */}
-            <div className="col-span-2">
+            <div className="relative col-span-2">
               <label className="text-slate-500 block mb-1">Food Item Name *</label>
               <input
                 type="text"
                 value={formFoodName}
-                onChange={(e) => setFormFoodName(e.target.value)}
-                placeholder="e.g. Cooked White Rice, Ghee Podi Idli"
+                onChange={(e) => {
+                  setFormFoodName(e.target.value);
+                  setShowFoodSuggestions(true);
+                }}
+                onFocus={() => setShowFoodSuggestions(true)}
+                onBlur={() => setShowFoodSuggestions(false)}
+                autoComplete="off"
+                aria-autocomplete="list"
+                aria-expanded={showFoodSuggestions}
+                placeholder="Search or enter a food item"
                 required
                 className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               />
+              {showFoodSuggestions && foodLibrary.length > 0 && (
+                <div role="listbox" className="absolute left-0 right-0 z-40 mt-1 max-h-60 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
+                  {foodSuggestions.length > 0 ? foodSuggestions.map((food) => (
+                    <button
+                      type="button"
+                      role="option"
+                      key={food.id}
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        handleSelectLibraryItem(food);
+                        setShowFoodSuggestions(false);
+                      }}
+                      className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left hover:bg-blue-50"
+                    >
+                      <span className="min-w-0 truncate font-semibold text-slate-800">{food.name}</span>
+                      <span className="shrink-0 text-[10px] text-slate-500">{food.category} · {food.defaultServingGrams}g</span>
+                    </button>
+                  )) : (
+                    <p className="px-3 py-2 text-xs text-slate-500">No library match. You can enter a new food name.</p>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Category */}

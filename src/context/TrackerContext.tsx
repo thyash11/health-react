@@ -19,6 +19,7 @@ import {
 } from "../data/initialData";
 import { FOOD_CATEGORIES } from "../constants/foodOptions";
 import { formatDateForDisplay } from "../utils/nutritionCalculator";
+import { sortDailyLogs } from "../utils/logSorting";
 
 interface TrackerContextType {
   selectedDate: string;
@@ -109,7 +110,7 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const [dailyLogs, setDailyLogs] = useState<DailyLogEntry[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.DAILY_LOGS);
-    return saved ? JSON.parse(saved) : initialDailyLogs;
+    return sortDailyLogs(saved ? JSON.parse(saved) : initialDailyLogs);
   });
 
   const [healthMetrics, setHealthMetrics] = useState<HealthMetric[]>(() => {
@@ -210,7 +211,7 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
       ...entry,
       id: "log-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6),
     };
-    setDailyLogs((prev) => [...prev, newEntry]);
+    setDailyLogs((prev) => sortDailyLogs([...prev, newEntry]));
     return true;
   };
 
@@ -222,12 +223,12 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
       ...entry,
       id: "log-" + Date.now() + "-" + idx + "-" + Math.random().toString(36).substring(2, 6),
     }));
-    setDailyLogs((prev) => [...prev, ...newEntries]);
+    setDailyLogs((prev) => sortDailyLogs([...prev, ...newEntries]));
     return true;
   };
 
   const updateLogEntry = (id: string, entry: Partial<DailyLogEntry>) => {
-    setDailyLogs((prev) => prev.map((l) => (l.id === id ? { ...l, ...entry } : l)));
+    setDailyLogs((prev) => sortDailyLogs(prev.map((l) => (l.id === id ? { ...l, ...entry } : l))));
   };
 
   const deleteLogEntry = (id: string) => {
