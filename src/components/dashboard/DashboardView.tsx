@@ -9,7 +9,9 @@ import {
   Clock, 
   AlertTriangle, 
   CheckCircle2, 
-  Utensils
+  Utensils,
+  Leaf,
+  ChevronRight,
 } from "lucide-react";
 import { useTracker } from "../../context/TrackerContext";
 import { aggregateDailySummary, getScoreColor, formatDateForDisplay } from "../../utils/nutritionCalculator";
@@ -17,10 +19,12 @@ import { MEAL_TYPES } from "../../constants/foodOptions";
 
 interface DashboardViewProps {
   onNavigateToFoodLog: () => void;
+  onNavigateToEatMe: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigateToFoodLog,
+  onNavigateToEatMe,
 }) => {
   const { selectedDate, setSelectedDate, dailyLogs, targets, profile } = useTracker();
 
@@ -219,6 +223,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <CheckCircle2 className="w-5 h-5 text-emerald-500 absolute" />
         </div>
       </div>
+
+      <button
+        type="button"
+        onClick={onNavigateToEatMe}
+        className="group flex w-full items-center justify-between gap-4 rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 p-4 text-left shadow-sm transition-all hover:border-emerald-300 hover:shadow-md sm:p-5"
+      >
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-sm">
+            <Leaf className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <span className="block text-sm font-bold text-emerald-950">Eat Me · Monthly Food Intelligence</span>
+            <span className="mt-0.5 block text-xs text-emerald-700">See what your month is missing and plan what to eat today and this week.</span>
+          </div>
+        </div>
+        <ChevronRight className="h-5 w-5 shrink-0 text-emerald-600 transition-transform group-hover:translate-x-1" />
+      </button>
 
       {/* Main Grid: Meals Breakdown + Daily Log History Table */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

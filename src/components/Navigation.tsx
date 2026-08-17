@@ -13,7 +13,7 @@ import {
 import { useTracker } from "../context/TrackerContext";
 import { FormattedDateInput } from "./FormattedDateInput";
 
-export type TabType = "dashboard" | "foodlog" | "habits" | "analytics" | "library" | "health" | "categories" | "settings";
+export type TabType = "dashboard" | "foodlog" | "habits" | "analytics" | "library" | "health" | "eatme" | "categories" | "settings";
 
 interface NavigationProps {
   activeTab: TabType;

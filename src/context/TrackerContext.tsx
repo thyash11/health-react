@@ -20,6 +20,8 @@ import {
 import { FOOD_CATEGORIES } from "../constants/foodOptions";
 import { formatDateForDisplay } from "../utils/nutritionCalculator";
 import { sortDailyLogs } from "../utils/logSorting";
+import { createDefaultEatMePlan } from "../data/defaultEatMePlan";
+import { EatMeFoodMapping, EatMeManualCheckIn, EatMePlan } from "../types/eatMe";
 
 interface TrackerContextType {
   selectedDate: string;
@@ -52,6 +54,14 @@ interface TrackerContextType {
   addFoodCategory: (name: string) => boolean;
   renameFoodCategory: (currentName: string, newName: string) => void;
   deleteFoodCategory: (name: string) => void;
+  eatMePlan: EatMePlan;
+  eatMeMappings: EatMeFoodMapping[];
+  eatMeManualCheckIns: EatMeManualCheckIn[];
+  replaceEatMePlan: (plan: EatMePlan) => boolean;
+  resetEatMePlan: () => boolean;
+  saveEatMeMapping: (mapping: EatMeFoodMapping) => void;
+  removeEatMeMapping: (normalizedFoodName: string) => void;
+  setEatMeManualCheckIn: (checkIn: EatMeManualCheckIn) => void;
 }
 
 const TrackerContext = createContext<TrackerContextType | undefined>(undefined);
@@ -65,6 +75,18 @@ const STORAGE_KEYS = {
   LAB_TESTS: "health_tracker_lab_tests_v1",
   SELECTED_DATE: "health_tracker_selected_date_v1",
   FOOD_CATEGORIES: "health_tracker_food_categories_v1",
+  EAT_ME_PLAN: "health_tracker_eat_me_plan_v1",
+  EAT_ME_MAPPINGS: "health_tracker_eat_me_mappings_v1",
+  EAT_ME_CHECK_INS: "health_tracker_eat_me_check_ins_v1",
+};
+
+const loadJson = <T,>(key: string, fallback: T): T => {
+  try {
+    const saved = localStorage.getItem(key);
+    return saved ? JSON.parse(saved) as T : fallback;
+  } catch {
+    return fallback;
+  }
 };
 
 const loadFoodCategories = () => {
@@ -125,6 +147,9 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const [periodicChecks] = useState<PeriodicCheckItem[]>(initialPeriodicChecks);
   const [foodCategories, setFoodCategories] = useState<string[]>(loadFoodCategories);
+  const [eatMePlan, setEatMePlan] = useState<EatMePlan>(() => loadJson(STORAGE_KEYS.EAT_ME_PLAN, createDefaultEatMePlan()));
+  const [eatMeMappings, setEatMeMappings] = useState<EatMeFoodMapping[]>(() => loadJson(STORAGE_KEYS.EAT_ME_MAPPINGS, []));
+  const [eatMeManualCheckIns, setEatMeManualCheckIns] = useState<EatMeManualCheckIn[]>(() => loadJson(STORAGE_KEYS.EAT_ME_CHECK_INS, []));
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.SELECTED_DATE, selectedDate);
@@ -157,6 +182,18 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.FOOD_CATEGORIES, JSON.stringify(foodCategories));
   }, [foodCategories]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.EAT_ME_PLAN, JSON.stringify(eatMePlan));
+  }, [eatMePlan]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.EAT_ME_MAPPINGS, JSON.stringify(eatMeMappings));
+  }, [eatMeMappings]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.EAT_ME_CHECK_INS, JSON.stringify(eatMeManualCheckIns));
+  }, [eatMeManualCheckIns]);
 
   const setSelectedDate = (date: string) => {
     setSelectedDateState(date);
@@ -311,6 +348,43 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setFoodCategories((previous) => previous.filter((item) => item !== name));
   };
 
+  const replaceEatMePlan = (plan: EatMePlan) => {
+    if (!window.confirm(`Replace the active Eat Me plan with “${plan.name}”? Food logs will not be changed.`)) return false;
+    const validItemIds = new Set(plan.sections.flatMap((section) => section.foods.map((food) => food.id)));
+    setEatMeMappings((previous) => previous
+      .map((mapping) => ({ ...mapping, checklistItemIds: mapping.checklistItemIds.filter((id) => validItemIds.has(id)) }))
+      .filter((mapping) => mapping.ignored || mapping.checklistItemIds.length > 0));
+    setEatMePlan(plan);
+    return true;
+  };
+
+  const resetEatMePlan = () => {
+    if (!window.confirm("Reset Eat Me to the built-in South Indian monthly checklist? Food logs will not be changed.")) return false;
+    const plan = createDefaultEatMePlan();
+    const validItemIds = new Set(plan.sections.flatMap((section) => section.foods.map((food) => food.id)));
+    setEatMeMappings((previous) => previous.filter((mapping) => mapping.ignored || mapping.checklistItemIds.every((id) => validItemIds.has(id))));
+    setEatMePlan(plan);
+    return true;
+  };
+
+  const saveEatMeMapping = (mapping: EatMeFoodMapping) => {
+    setEatMeMappings((previous) => [
+      ...previous.filter((item) => item.normalizedFoodName !== mapping.normalizedFoodName),
+      mapping,
+    ]);
+  };
+
+  const removeEatMeMapping = (normalizedFoodName: string) => {
+    setEatMeMappings((previous) => previous.filter((item) => item.normalizedFoodName !== normalizedFoodName));
+  };
+
+  const setEatMeManualCheckIn = (checkIn: EatMeManualCheckIn) => {
+    setEatMeManualCheckIns((previous) => [
+      ...previous.filter((item) => !(item.date === checkIn.date && item.goalId === checkIn.goalId)),
+      checkIn,
+    ]);
+  };
+
   return (
     <TrackerContext.Provider
       value={{
@@ -344,6 +418,14 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
         addFoodCategory,
         renameFoodCategory,
         deleteFoodCategory,
+        eatMePlan,
+        eatMeMappings,
+        eatMeManualCheckIns,
+        replaceEatMePlan,
+        resetEatMePlan,
+        saveEatMeMapping,
+        removeEatMeMapping,
+        setEatMeManualCheckIn,
       }}
     >
       {children}
