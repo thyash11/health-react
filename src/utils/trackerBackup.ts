@@ -10,6 +10,7 @@ export const TRACKER_STORAGE_KEYS = {
   eatMePlan: "health_tracker_eat_me_plan_v1",
   eatMeMappings: "health_tracker_eat_me_mappings_v1",
   eatMeManualCheckIns: "health_tracker_eat_me_check_ins_v1",
+  eatMeRawTicks: "health_tracker_eat_me_raw_ticks_v1",
 } as const;
 
 export const BACKUP_FILE_NAME = "nutrimetric-backup.json";
@@ -79,7 +80,7 @@ export function importTrackerBackup(contents: string) {
   }
 
   const data = (backup as TrackerBackup).data;
-  const optionalFields = new Set(["foodCategories", "eatMePlan", "eatMeMappings", "eatMeManualCheckIns"]);
+  const optionalFields = new Set(["foodCategories", "eatMePlan", "eatMeMappings", "eatMeManualCheckIns", "eatMeRawTicks"]);
   const missingFields = Object.keys(TRACKER_STORAGE_KEYS).filter(
     (name) => !optionalFields.has(name)
   ).filter(

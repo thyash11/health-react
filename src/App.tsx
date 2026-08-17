@@ -12,6 +12,7 @@ import { FoodCategoriesView } from "./components/categories/FoodCategoriesView";
 import { Settings, Tags } from "lucide-react";
 import { FoodItem } from "./types";
 import { EatMeView } from "./components/eatme/EatMeView";
+import { EatMeRawView } from "./components/eatme/EatMeRawView";
 
 function MainApp() {
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
@@ -39,6 +40,10 @@ function MainApp() {
             onNavigateToFoodLog={() => setActiveTab("foodlog")}
             onNavigateToEatMe={() => {
               setActiveTab("eatme");
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+            onNavigateToEatMeRaw={() => {
+              setActiveTab("eatmeraw");
               window.scrollTo({ top: 0, behavior: "smooth" });
             }}
           />
@@ -73,6 +78,15 @@ function MainApp() {
 
         {activeTab === "eatme" && (
           <EatMeView
+            onBack={() => {
+              setActiveTab("dashboard");
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+          />
+        )}
+
+        {activeTab === "eatmeraw" && (
+          <EatMeRawView
             onBack={() => {
               setActiveTab("dashboard");
               window.scrollTo({ top: 0, behavior: "smooth" });

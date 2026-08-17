@@ -75,6 +75,12 @@ export interface EatMeManualCheckIn {
   completed: boolean;
 }
 
+export interface EatMeRawTick {
+  month: string;
+  itemId: string;
+  weeks: number[];
+}
+
 export interface EatMeImportPreview {
   plan: EatMePlan;
   sectionCount: number;

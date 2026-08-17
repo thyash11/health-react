@@ -21,7 +21,7 @@ import { FOOD_CATEGORIES } from "../constants/foodOptions";
 import { formatDateForDisplay } from "../utils/nutritionCalculator";
 import { sortDailyLogs } from "../utils/logSorting";
 import { createDefaultEatMePlan } from "../data/defaultEatMePlan";
-import { EatMeFoodMapping, EatMeManualCheckIn, EatMePlan } from "../types/eatMe";
+import { EatMeFoodMapping, EatMeManualCheckIn, EatMePlan, EatMeRawTick } from "../types/eatMe";
 
 interface TrackerContextType {
   selectedDate: string;
@@ -62,6 +62,8 @@ interface TrackerContextType {
   saveEatMeMapping: (mapping: EatMeFoodMapping) => void;
   removeEatMeMapping: (normalizedFoodName: string) => void;
   setEatMeManualCheckIn: (checkIn: EatMeManualCheckIn) => void;
+  eatMeRawTicks: EatMeRawTick[];
+  toggleEatMeRawTick: (month: string, itemId: string, week: number) => void;
 }
 
 const TrackerContext = createContext<TrackerContextType | undefined>(undefined);
@@ -78,6 +80,7 @@ const STORAGE_KEYS = {
   EAT_ME_PLAN: "health_tracker_eat_me_plan_v1",
   EAT_ME_MAPPINGS: "health_tracker_eat_me_mappings_v1",
   EAT_ME_CHECK_INS: "health_tracker_eat_me_check_ins_v1",
+  EAT_ME_RAW_TICKS: "health_tracker_eat_me_raw_ticks_v1",
 };
 
 const loadJson = <T,>(key: string, fallback: T): T => {
@@ -150,6 +153,7 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [eatMePlan, setEatMePlan] = useState<EatMePlan>(() => loadJson(STORAGE_KEYS.EAT_ME_PLAN, createDefaultEatMePlan()));
   const [eatMeMappings, setEatMeMappings] = useState<EatMeFoodMapping[]>(() => loadJson(STORAGE_KEYS.EAT_ME_MAPPINGS, []));
   const [eatMeManualCheckIns, setEatMeManualCheckIns] = useState<EatMeManualCheckIn[]>(() => loadJson(STORAGE_KEYS.EAT_ME_CHECK_INS, []));
+  const [eatMeRawTicks, setEatMeRawTicks] = useState<EatMeRawTick[]>(() => loadJson(STORAGE_KEYS.EAT_ME_RAW_TICKS, []));
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.SELECTED_DATE, selectedDate);
@@ -194,6 +198,10 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.EAT_ME_CHECK_INS, JSON.stringify(eatMeManualCheckIns));
   }, [eatMeManualCheckIns]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.EAT_ME_RAW_TICKS, JSON.stringify(eatMeRawTicks));
+  }, [eatMeRawTicks]);
 
   const setSelectedDate = (date: string) => {
     setSelectedDateState(date);
@@ -385,6 +393,20 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
     ]);
   };
 
+  const toggleEatMeRawTick = (month: string, itemId: string, week: number) => {
+    if (week < 1 || week > 5) return;
+    setEatMeRawTicks((previous) => {
+      const existing = previous.find((item) => item.month === month && item.itemId === itemId);
+      if (!existing) return [...previous, { month, itemId, weeks: [week] }];
+      const weeks = existing.weeks.includes(week)
+        ? existing.weeks.filter((value) => value !== week)
+        : [...existing.weeks, week].sort();
+      return weeks.length
+        ? previous.map((item) => item === existing ? { ...item, weeks } : item)
+        : previous.filter((item) => item !== existing);
+    });
+  };
+
   return (
     <TrackerContext.Provider
       value={{
@@ -426,6 +448,8 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
         saveEatMeMapping,
         removeEatMeMapping,
         setEatMeManualCheckIn,
+        eatMeRawTicks,
+        toggleEatMeRawTick,
       }}
     >
       {children}
