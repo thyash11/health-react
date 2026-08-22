@@ -4,13 +4,14 @@ import { useTracker } from "../../context/TrackerContext";
 import { aggregateDailySummary, formatDateForDisplay, getScoreColor } from "../../utils/nutritionCalculator";
 
 export const HabitsView: React.FC = () => {
-  const { selectedDate, dailyLogs, targets } = useTracker();
-  const summary = aggregateDailySummary(selectedDate, dailyLogs, targets);
+  const { selectedDate, dailyLogs, getTargetsForDate } = useTracker();
+  const dayTargets = getTargetsForDate(selectedDate);
+  const summary = aggregateDailySummary(selectedDate, dailyLogs, dayTargets);
   const scoreInfo = getScoreColor(summary.score);
 
   const metrics = [
-    { label: "Water", value: `${summary.totalWater} ml`, target: `${targets.waterMl} ml target`, icon: Droplets, color: "text-cyan-600", bg: "bg-cyan-50" },
-    { label: "Walking", value: `${summary.totalWalkKm} km`, target: `${targets.walkKm} km target`, icon: Footprints, color: "text-indigo-600", bg: "bg-indigo-50" },
+    { label: "Water", value: `${summary.totalWater} ml`, target: `${dayTargets.waterMl} ml target`, icon: Droplets, color: "text-cyan-600", bg: "bg-cyan-50" },
+    { label: "Walking", value: `${summary.totalWalkKm} km`, target: `${dayTargets.walkKm} km target`, icon: Footprints, color: "text-indigo-600", bg: "bg-indigo-50" },
     { label: "Fruit portions", value: summary.fruitEntries, target: "Detected from food categories", icon: Apple, color: "text-emerald-600", bg: "bg-emerald-50" },
     { label: "Veg / legumes", value: summary.vegLegumeEntries, target: "Detected from foods and categories", icon: Leaf, color: "text-teal-600", bg: "bg-teal-50" },
     { label: "Treat entries", value: summary.treatEntries, target: "Dessert, snack, bakery or sugar", icon: Cookie, color: summary.treatEntries > 1 ? "text-rose-600" : "text-amber-600", bg: summary.treatEntries > 1 ? "bg-rose-50" : "bg-amber-50" },

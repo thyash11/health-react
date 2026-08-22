@@ -3,7 +3,7 @@ import {
   Flame, 
   Dumbbell, 
   Wheat, 
-  Droplets, 
+  ChartPie,
   Footprints, 
   Target, 
   Clock, 
@@ -17,6 +17,11 @@ import {
 import { useTracker } from "../../context/TrackerContext";
 import { aggregateDailySummary, getScoreColor, formatDateForDisplay } from "../../utils/nutritionCalculator";
 import { MEAL_TYPES } from "../../constants/foodOptions";
+import {
+  calculateWeightGoalDaysLeft,
+  calculateWeightGoalProgress,
+  getWeightMetricsChronological,
+} from "../../utils/weightMetrics";
 
 interface DashboardViewProps {
   onNavigateToFoodLog: () => void;
@@ -29,10 +34,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigateToEatMe,
   onNavigateToEatMeRaw,
 }) => {
-  const { selectedDate, setSelectedDate, dailyLogs, targets, profile } = useTracker();
+  const {
+    selectedDate,
+    setSelectedDate,
+    dailyLogs,
+    profile,
+    healthMetrics,
+    getTargetsForDate,
+    getWeightGoalRevisionDateForDate,
+  } = useTracker();
+  const dayTargets = getTargetsForDate(selectedDate);
 
   // Aggregate selected date
-  const summary = aggregateDailySummary(selectedDate, dailyLogs, targets);
+  const summary = aggregateDailySummary(selectedDate, dailyLogs, dayTargets);
 
   // Filter logs for selected date
   const dayLogs = dailyLogs.filter((l) => l.date === selectedDate);
@@ -51,11 +65,39 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   // Calculate percentage of targets
   const percentOf = (value: number, target: number) =>
     target > 0 ? Math.round((value / target) * 100) : 0;
-  const calPct = percentOf(summary.totalCalories, targets.dailyCalories);
-  const proteinPct = percentOf(summary.totalProtein, targets.proteinGrams);
-  const fiberPct = percentOf(summary.totalFiber, targets.fiberGrams);
-  const waterPct = percentOf(summary.totalWater, targets.waterMl);
-  const walkPct = percentOf(summary.totalWalkKm, targets.walkKm);
+  const calPct = percentOf(summary.totalCalories, dayTargets.dailyCalories);
+  const proteinPct = percentOf(summary.totalProtein, dayTargets.proteinGrams);
+  const fiberPct = percentOf(summary.totalFiber, dayTargets.fiberGrams);
+  const walkPct = percentOf(summary.totalWalkKm, dayTargets.walkKm);
+  const fatTargetGrams = dayTargets.fatGrams > 0
+    ? dayTargets.fatGrams
+    : dayTargets.dailyCalories > 0
+      ? Math.round((dayTargets.dailyCalories * 0.3) / 9)
+      : 0;
+  const fatPct = percentOf(summary.totalFat, fatTargetGrams);
+  const fatOverMax = fatTargetGrams > 0 && summary.totalFat > fatTargetGrams;
+  const weightHistory = getWeightMetricsChronological(healthMetrics).filter((metric) => metric.date <= selectedDate);
+  const latestWeightMetric = weightHistory.length > 0 ? weightHistory[weightHistory.length - 1] : undefined;
+  const startingWeight = weightHistory.length > 0 ? weightHistory[0].weightKg : dayTargets.currentWeightKg;
+  const currentWeight = latestWeightMetric?.weightKg || dayTargets.currentWeightKg;
+  const weightGoalProgress = calculateWeightGoalProgress(currentWeight, startingWeight, dayTargets.goalWeightKg);
+  const weightGoalGap = currentWeight > 0 && dayTargets.goalWeightKg > 0
+    ? Math.round((currentWeight - dayTargets.goalWeightKg) * 10) / 10
+    : null;
+  const weightGoalRevisionDate = getWeightGoalRevisionDateForDate(selectedDate);
+  const weightGoalProjectionAnchor = [latestWeightMetric?.date, weightGoalRevisionDate]
+    .filter((date): date is string => Boolean(date))
+    .sort()
+    .at(-1);
+  const weightGoalDaysLeft = weightGoalProjectionAnchor
+    ? calculateWeightGoalDaysLeft({
+        currentWeight,
+        goalWeight: dayTargets.goalWeightKg,
+        intensity: dayTargets.goalIntensity,
+        anchorDate: weightGoalProjectionAnchor,
+        viewedDate: selectedDate,
+      })
+    : null;
 
   const scoreInfo = getScoreColor(summary.score);
 
@@ -78,7 +120,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
           <div className="flex items-baseline justify-between">
             <span className="text-xl font-bold text-slate-900">{summary.totalCalories}</span>
-            <span className="text-xs text-slate-400">/ {targets.dailyCalories}</span>
+            <span className="text-xs text-slate-400">/ {dayTargets.dailyCalories}</span>
           </div>
           <div className="mt-2.5 w-full bg-slate-100 h-2 rounded-full overflow-hidden">
             <div
@@ -99,7 +141,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
           <div className="flex items-baseline justify-between">
             <span className="text-xl font-bold text-slate-900">{summary.totalProtein}g</span>
-            <span className="text-xs text-slate-400">/ {targets.proteinGrams}g</span>
+            <span className="text-xs text-slate-400">/ {dayTargets.proteinGrams}g</span>
           </div>
           <div className="mt-2.5 w-full bg-slate-100 h-2 rounded-full overflow-hidden">
             <div
@@ -120,7 +162,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
           <div className="flex items-baseline justify-between">
             <span className="text-xl font-bold text-slate-900">{summary.totalFiber}g</span>
-            <span className="text-xs text-slate-400">/ {targets.fiberGrams}g</span>
+            <span className="text-xs text-slate-400">/ {dayTargets.fiberGrams}g</span>
           </div>
           <div className="mt-2.5 w-full bg-slate-100 h-2 rounded-full overflow-hidden">
             <div
@@ -133,24 +175,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </span>
         </div>
 
-        {/* Water Card */}
-        <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm">
+        {/* Fat Card */}
+        <div className={`p-4 rounded-2xl border shadow-sm ${fatOverMax ? "bg-rose-50/50 border-rose-200" : "bg-white border-slate-200/80"}`}>
           <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Water</span>
-            <Droplets className="w-4 h-4 text-cyan-600" />
+            <span className="text-xs font-semibold uppercase tracking-wider">Fat</span>
+            <ChartPie className={`w-4 h-4 ${fatOverMax ? "text-red-600" : "text-rose-600"}`} />
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="text-xl font-bold text-slate-900">{summary.totalWater} ml</span>
-            <span className="text-xs text-slate-400">/ {targets.waterMl}</span>
+            <span className="text-xl font-bold text-slate-900">{summary.totalFat}g</span>
+            <span className="text-xs text-slate-400">/ {fatTargetGrams}g max</span>
           </div>
           <div className="mt-2.5 w-full bg-slate-100 h-2 rounded-full overflow-hidden">
             <div
-              className="h-full bg-cyan-500 transition-all"
-              style={{ width: `${Math.min(100, waterPct)}%` }}
+              className={`h-full transition-all ${fatOverMax ? "bg-red-500" : fatPct >= 90 ? "bg-amber-500" : "bg-rose-500"}`}
+              style={{ width: `${Math.min(100, fatPct)}%` }}
             />
           </div>
-          <span className="text-[11px] font-semibold mt-1.5 inline-block text-cyan-600">
-            {waterPct}% of target
+          <span className={`text-[11px] font-semibold mt-1.5 inline-block ${fatOverMax ? "text-red-600" : fatPct >= 90 ? "text-amber-600" : "text-rose-600"}`}>
+            {fatTargetGrams <= 0
+              ? "Set a calorie target"
+              : `${fatPct}% of target`}
           </span>
         </div>
 
@@ -162,7 +206,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
           <div className="flex items-baseline justify-between">
             <span className="text-xl font-bold text-slate-900">{summary.totalWalkKm} km</span>
-            <span className="text-xs text-slate-400">/ {targets.walkKm} km</span>
+            <span className="text-xs text-slate-400">/ {dayTargets.walkKm} km</span>
           </div>
           <div className="mt-2.5 w-full bg-slate-100 h-2 rounded-full overflow-hidden">
             <div
@@ -175,24 +219,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </span>
         </div>
 
-        {/* Goal Weight Card */}
+        {/* Weight Goal Card */}
         <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm">
           <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Weight Goal</span>
+            <span className="text-xs font-semibold uppercase tracking-wider">Weight</span>
             <Target className="w-4 h-4 text-amber-500" />
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="text-xl font-bold text-slate-900">{targets.currentWeightKg} kg</span>
-            <span className="text-xs text-slate-400">Goal: {targets.goalWeightKg}</span>
+            <span className="text-xl font-bold text-slate-900">{currentWeight || 0} kg</span>
+            <span className="text-xs text-slate-400">Goal: {dayTargets.goalWeightKg || 0} kg</span>
           </div>
           <div className="mt-2.5 w-full bg-slate-100 h-2 rounded-full overflow-hidden">
             <div
               className="h-full bg-amber-500 transition-all"
-              style={{ width: "65%" }}
+              style={{ width: `${weightGoalProgress}%` }}
             />
           </div>
           <span className="text-[11px] font-semibold mt-1.5 inline-block text-slate-600">
-            {(targets.currentWeightKg - targets.goalWeightKg).toFixed(1)} kg to lose
+            {weightGoalGap === null
+              ? "Record weight and set a goal"
+              : weightGoalGap === 0
+                ? "Goal reached"
+                : weightGoalDaysLeft === null
+                  ? "Set a goal intensity"
+                  : `${weightGoalDaysLeft} days left`}
           </span>
         </div>
 
@@ -343,7 +393,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <Clock className="w-4 h-4 text-blue-600" />
               Daily Log Summary
             </h3>
-            <span className="text-[11px] text-slate-500">Target: 2000 kcal</span>
+            <span className="text-[11px] text-slate-500">Targets follow each date</span>
           </div>
 
           <div className="overflow-x-auto">
@@ -358,9 +408,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {uniqueDates.map((dateStr) => {
-                  const daySum = aggregateDailySummary(dateStr, dailyLogs, targets);
+                  const historicalTargets = getTargetsForDate(dateStr);
+                  const daySum = aggregateDailySummary(dateStr, dailyLogs, historicalTargets);
                   const isSelected = dateStr === selectedDate;
-                  const isOverCal = daySum.totalCalories > targets.dailyCalories;
+                  const isOverCal = daySum.totalCalories > historicalTargets.dailyCalories;
 
                   return (
                     <tr
@@ -399,7 +450,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/60 text-xs text-slate-600 space-y-1">
             <span className="font-semibold text-slate-800 block text-xs">💡 Quick Insights:</span>
-            <p>Red calorie numbers indicate intake above target limit (2000 kcal).</p>
+            <p>Red calorie numbers indicate intake above the target saved for that date.</p>
             <p>Score reflects combined nutrition, protein, fiber, hydration & walk distance.</p>
           </div>
         </div>

@@ -1,44 +1,28 @@
 import React, { useEffect, useState } from "react";
 import { 
   HeartPulse, 
-  Target, 
   UserCheck, 
   FileText, 
   Calendar, 
   Plus, 
-  AlertTriangle, 
-  CheckCircle2, 
   Trash2, 
-  Save,
   X,
 } from "lucide-react";
 import { useTracker } from "../../context/TrackerContext";
-import { LabTestRecord, HealthMetric } from "../../types";
+import { LabTestRecord } from "../../types";
 import { formatDateForDisplay } from "../../utils/nutritionCalculator";
 import { FormattedDateInput } from "../FormattedDateInput";
+import { WeightTrackingPanel } from "./WeightTrackingPanel";
+import { NutritionGoalsPanel } from "./NutritionGoalsPanel";
 
 export const HealthLabsView: React.FC = () => {
   const { 
-    targets, 
-    updateTargets, 
     profile, 
-    updateProfile, 
     labTests, 
     addLabTest, 
     deleteLabTest, 
-    healthMetrics, 
-    addHealthMetric, 
-    deleteHealthMetric, 
     periodicChecks,
   } = useTracker();
-
-  // Targets state
-  const [calTarget, setCalTarget] = useState(targets.dailyCalories);
-  const [pTarget, setPTarget] = useState(targets.proteinGrams);
-  const [fibTarget, setFibTarget] = useState(targets.fiberGrams);
-  const [waterTarget, setWaterTarget] = useState(targets.waterMl);
-  const [walkTarget, setWalkTarget] = useState(targets.walkKm);
-  const [goalWeight, setGoalWeight] = useState(targets.goalWeightKg);
 
   // New Lab Test Form
   const [showAddLab, setShowAddLab] = useState(false);
@@ -62,19 +46,6 @@ export const HealthLabsView: React.FC = () => {
       document.body.style.overflow = "";
     };
   }, [showAddLab]);
-
-  const handleSaveTargets = (e: React.FormEvent) => {
-    e.preventDefault();
-    updateTargets({
-      dailyCalories: Number(calTarget),
-      proteinGrams: Number(pTarget),
-      fiberGrams: Number(fibTarget),
-      waterMl: Number(waterTarget),
-      walkKm: Number(walkTarget),
-      goalWeightKg: Number(goalWeight),
-    });
-    alert("Personal nutrition and health targets updated!");
-  };
 
   const handleCreateLabTest = (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,92 +84,12 @@ export const HealthLabsView: React.FC = () => {
 
       </div>
 
-      {/* Grid: Personal Targets + User Context */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Nutrition & Activity Targets Form */}
-        <form onSubmit={handleSaveTargets} className="bg-white border border-slate-200/80 rounded-2xl p-5 space-y-4 shadow-sm">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <Target className="w-4 h-4 text-amber-600" />
-              Nutrition & Daily Goals Configuration
-            </h3>
-            <button
-              type="submit"
-              className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition-colors flex items-center gap-1 shadow-xs"
-            >
-              <Save className="w-3.5 h-3.5" />
-              <span>Save</span>
-            </button>
-          </div>
+      <NutritionGoalsPanel />
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-            <div>
-              <label className="text-slate-500 block mb-1">Daily Calories (kcal)</label>
-              <input
-                type="number"
-                value={calTarget}
-                onChange={(e) => setCalTarget(Number(e.target.value))}
-                className="w-full bg-slate-50 border border-slate-200 text-amber-600 font-bold rounded-xl p-2.5"
-              />
-            </div>
+      <WeightTrackingPanel />
 
-            <div>
-              <label className="text-slate-500 block mb-1">Protein Target (g)</label>
-              <input
-                type="number"
-                value={pTarget}
-                onChange={(e) => setPTarget(Number(e.target.value))}
-                className="w-full bg-slate-50 border border-slate-200 text-emerald-600 font-bold rounded-xl p-2.5"
-              />
-            </div>
-
-            <div>
-              <label className="text-slate-500 block mb-1">Fiber Target (g)</label>
-              <input
-                type="number"
-                value={fibTarget}
-                onChange={(e) => setFibTarget(Number(e.target.value))}
-                className="w-full bg-slate-50 border border-slate-200 text-teal-600 font-bold rounded-xl p-2.5"
-              />
-            </div>
-
-            <div>
-              <label className="text-slate-500 block mb-1">Water Target (ml)</label>
-              <input
-                type="number"
-                value={waterTarget}
-                onChange={(e) => setWaterTarget(Number(e.target.value))}
-                className="w-full bg-slate-50 border border-slate-200 text-cyan-600 font-bold rounded-xl p-2.5"
-              />
-            </div>
-
-            <div>
-              <label className="text-slate-500 block mb-1">Walk Target (km)</label>
-              <input
-                type="number"
-                step="0.5"
-                value={walkTarget}
-                onChange={(e) => setWalkTarget(Number(e.target.value))}
-                className="w-full bg-slate-50 border border-slate-200 text-indigo-600 font-bold rounded-xl p-2.5"
-              />
-            </div>
-
-            <div>
-              <label className="text-slate-500 block mb-1">Goal Weight (kg)</label>
-              <input
-                type="number"
-                step="0.5"
-                value={goalWeight}
-                onChange={(e) => setGoalWeight(Number(e.target.value))}
-                className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-bold rounded-xl p-2.5"
-              />
-            </div>
-          </div>
-        </form>
-
-        {/* User Profile & Risk Context */}
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-5 space-y-4 shadow-sm">
+      {/* User Profile & Risk Context */}
+      <div className="bg-white border border-slate-200/80 rounded-2xl p-5 space-y-4 shadow-sm">
           <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-2">
             <UserCheck className="w-4 h-4 text-blue-600" />
             Profile & Clinical Risk Context
@@ -230,8 +121,6 @@ export const HealthLabsView: React.FC = () => {
               <span className="text-slate-700">{profile.mealPattern}</span>
             </div>
           </div>
-        </div>
-
       </div>
 
       {/* Lab Tests Table (Matching TEST SHEET in screenshot 4) */}

@@ -418,7 +418,6 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({
                 type="number"
                 value={formQuantity}
                 onChange={(e) => handleQuantityChange(numericDraft(e.target.value))}
-                onFocus={(e) => e.currentTarget.select()}
                 min={1}
                 required
                 className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-bold rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
@@ -432,7 +431,6 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({
                 type="number"
                 value={formCalories}
                 onChange={(e) => setFormCalories(numericDraft(e.target.value))}
-                onFocus={(e) => e.currentTarget.select()}
                 className="w-full bg-slate-50 border border-slate-200 text-amber-600 font-bold rounded-xl p-2.5"
               />
             </div>
@@ -445,7 +443,6 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({
                 step="0.1"
                 value={formProtein}
                 onChange={(e) => setFormProtein(numericDraft(e.target.value))}
-                onFocus={(e) => e.currentTarget.select()}
                 className="w-full bg-slate-50 border border-slate-200 text-emerald-600 font-bold rounded-xl p-2.5"
               />
             </div>
@@ -458,7 +455,6 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({
                 step="0.1"
                 value={formCarbs}
                 onChange={(e) => setFormCarbs(numericDraft(e.target.value))}
-                onFocus={(e) => e.currentTarget.select()}
                 className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-2.5"
               />
             </div>
@@ -471,7 +467,6 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({
                 step="0.1"
                 value={formFat}
                 onChange={(e) => setFormFat(numericDraft(e.target.value))}
-                onFocus={(e) => e.currentTarget.select()}
                 className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-2.5"
               />
             </div>
@@ -484,7 +479,6 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({
                 step="0.1"
                 value={formFiber}
                 onChange={(e) => setFormFiber(numericDraft(e.target.value))}
-                onFocus={(e) => e.currentTarget.select()}
                 className="w-full bg-slate-50 border border-slate-200 text-teal-600 font-bold rounded-xl p-2.5"
               />
             </div>
@@ -496,7 +490,6 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({
                 type="number"
                 value={formWater}
                 onChange={(e) => setFormWater(numericDraft(e.target.value))}
-                onFocus={(e) => e.currentTarget.select()}
                 className="w-full bg-slate-50 border border-slate-200 text-cyan-600 rounded-xl p-2.5"
               />
             </div>
@@ -509,7 +502,6 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({
                 step="0.1"
                 value={formWalk}
                 onChange={(e) => setFormWalk(numericDraft(e.target.value))}
-                onFocus={(e) => e.currentTarget.select()}
                 className="w-full bg-slate-50 border border-slate-200 text-indigo-600 rounded-xl p-2.5"
               />
             </div>

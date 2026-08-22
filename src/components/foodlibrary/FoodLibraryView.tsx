@@ -281,7 +281,6 @@ export const FoodLibraryView: React.FC<FoodLibraryViewProps> = ({ onLogFood }) =
                 type="number"
                 value={serving}
                 onChange={(e) => setServing(numericDraft(e.target.value))}
-                onFocus={(e) => e.currentTarget.select()}
                 min={1}
                 required
                 className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl p-2.5 font-bold"
@@ -294,7 +293,6 @@ export const FoodLibraryView: React.FC<FoodLibraryViewProps> = ({ onLogFood }) =
                 type="number"
                 value={cal100}
                 onChange={(e) => setCal100(numericDraft(e.target.value))}
-                onFocus={(e) => e.currentTarget.select()}
                 className="w-full bg-slate-50 border border-slate-200 text-amber-600 font-bold rounded-xl p-2.5"
               />
             </div>
@@ -306,7 +304,6 @@ export const FoodLibraryView: React.FC<FoodLibraryViewProps> = ({ onLogFood }) =
                 step="0.1"
                 value={p100}
                 onChange={(e) => setP100(numericDraft(e.target.value))}
-                onFocus={(e) => e.currentTarget.select()}
                 className="w-full bg-slate-50 border border-slate-200 text-emerald-600 font-bold rounded-xl p-2.5"
               />
             </div>
@@ -318,7 +315,6 @@ export const FoodLibraryView: React.FC<FoodLibraryViewProps> = ({ onLogFood }) =
                 step="0.1"
                 value={c100}
                 onChange={(e) => setC100(numericDraft(e.target.value))}
-                onFocus={(e) => e.currentTarget.select()}
                 className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-2.5"
               />
             </div>
@@ -330,7 +326,6 @@ export const FoodLibraryView: React.FC<FoodLibraryViewProps> = ({ onLogFood }) =
                 step="0.1"
                 value={f100}
                 onChange={(e) => setF100(numericDraft(e.target.value))}
-                onFocus={(e) => e.currentTarget.select()}
                 className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-2.5"
               />
             </div>
@@ -342,7 +337,6 @@ export const FoodLibraryView: React.FC<FoodLibraryViewProps> = ({ onLogFood }) =
                 step="0.1"
                 value={fib100}
                 onChange={(e) => setFib100(numericDraft(e.target.value))}
-                onFocus={(e) => e.currentTarget.select()}
                 className="w-full bg-slate-50 border border-slate-200 text-teal-600 font-bold rounded-xl p-2.5"
               />
             </div>

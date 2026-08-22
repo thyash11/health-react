@@ -1,12 +1,12 @@
 import React, { useState } from "react";
 import { 
   BarChart, 
+  ComposedChart,
   Bar, 
   XAxis, 
   YAxis, 
   Tooltip, 
   ResponsiveContainer, 
-  ReferenceLine, 
   LineChart, 
   Line, 
   PieChart, 
@@ -22,7 +22,7 @@ import { aggregateDailySummary, formatDateForDisplay } from "../../utils/nutriti
 type TimeframeMode = "week" | "month" | "all";
 
 export const AnalyticsView: React.FC = () => {
-  const { dailyLogs, targets } = useTracker();
+  const { dailyLogs, getTargetsForDate } = useTracker();
   const [timeframe, setTimeframe] = useState<TimeframeMode>("week");
 
   // Get all unique dates in dataset
@@ -40,7 +40,8 @@ export const AnalyticsView: React.FC = () => {
 
   // Generate daily summaries for chart
   const chartData = selectedDates.map((dateStr) => {
-    const summary = aggregateDailySummary(dateStr, dailyLogs, targets);
+    const historicalTargets = getTargetsForDate(dateStr);
+    const summary = aggregateDailySummary(dateStr, dailyLogs, historicalTargets);
     return {
       date: formatDateForDisplay(dateStr),
       fullDate: dateStr,
@@ -52,6 +53,11 @@ export const AnalyticsView: React.FC = () => {
       water: summary.totalWater,
       walk: summary.totalWalkKm,
       score: summary.score,
+      calorieTarget: historicalTargets.dailyCalories,
+      proteinTarget: historicalTargets.proteinGrams,
+      carbsTarget: historicalTargets.carbsGrams,
+      fatTarget: historicalTargets.fatGrams,
+      fiberTarget: historicalTargets.fiberGrams,
     };
   });
 
@@ -87,8 +93,19 @@ export const AnalyticsView: React.FC = () => {
     ? Math.round(chartData.reduce((acc, d) => acc + d.score, 0) / chartData.length) 
     : 0;
 
-  const daysMetCalTarget = chartData.filter((d) => d.calories <= targets.dailyCalories && d.calories > 0).length;
-  const calAdherencePct = chartData.length > 0 ? Math.round((daysMetCalTarget / chartData.length) * 100) : 0;
+  const avgCalTarget = chartData.length > 0
+    ? Math.round(chartData.reduce((acc, day) => acc + day.calorieTarget, 0) / chartData.length)
+    : 0;
+  const avgProteinTarget = chartData.length > 0
+    ? Math.round(chartData.reduce((acc, day) => acc + day.proteinTarget, 0) / chartData.length)
+    : 0;
+  const avgFiberTarget = chartData.length > 0
+    ? Math.round(chartData.reduce((acc, day) => acc + day.fiberTarget, 0) / chartData.length)
+    : 0;
+
+  const eligibleCalorieDays = chartData.filter((day) => day.calories > 0 && day.calorieTarget > 0);
+  const daysMetCalTarget = eligibleCalorieDays.filter((day) => day.calories <= day.calorieTarget).length;
+  const calAdherencePct = eligibleCalorieDays.length > 0 ? Math.round((daysMetCalTarget / eligibleCalorieDays.length) * 100) : 0;
 
   return (
     <div className="space-y-6 pb-12">
@@ -149,7 +166,7 @@ export const AnalyticsView: React.FC = () => {
             <Flame className="w-4 h-4 text-amber-500" />
           </div>
           <div className="text-2xl font-black text-slate-900">{avgCal} kcal</div>
-          <span className="text-[11px] text-slate-500">Target: {targets.dailyCalories} kcal</span>
+          <span className="text-[11px] text-slate-500">Avg target: {avgCalTarget} kcal</span>
         </div>
 
         <div className="bg-white border border-slate-200/80 rounded-2xl p-4 space-y-1 shadow-sm">
@@ -158,7 +175,7 @@ export const AnalyticsView: React.FC = () => {
             <Dumbbell className="w-4 h-4 text-emerald-600" />
           </div>
           <div className="text-2xl font-black text-emerald-600">{avgProtein}g</div>
-          <span className="text-[11px] text-slate-500">Target: {targets.proteinGrams}g</span>
+          <span className="text-[11px] text-slate-500">Avg target: {avgProteinTarget}g</span>
         </div>
 
         <div className="bg-white border border-slate-200/80 rounded-2xl p-4 space-y-1 shadow-sm">
@@ -167,7 +184,7 @@ export const AnalyticsView: React.FC = () => {
             <Flame className="w-4 h-4 text-teal-600" />
           </div>
           <div className="text-2xl font-black text-teal-600">{avgFiber}g</div>
-          <span className="text-[11px] text-slate-500">Target: {targets.fiberGrams}g</span>
+          <span className="text-[11px] text-slate-500">Avg target: {avgFiberTarget}g</span>
         </div>
 
         <div className="bg-white border border-slate-200/80 rounded-2xl p-4 space-y-1 shadow-sm">
@@ -176,7 +193,7 @@ export const AnalyticsView: React.FC = () => {
             <Award className="w-4 h-4 text-blue-600" />
           </div>
           <div className="text-2xl font-black text-slate-900">{calAdherencePct}%</div>
-          <span className="text-[11px] text-slate-500">{daysMetCalTarget} of {chartData.length} days under limit</span>
+          <span className="text-[11px] text-slate-500">{daysMetCalTarget} of {eligibleCalorieDays.length} logged days under limit</span>
         </div>
 
       </div>
@@ -189,23 +206,23 @@ export const AnalyticsView: React.FC = () => {
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
               <Flame className="w-4 h-4 text-amber-500" />
-              Daily Calorie Intake vs Target ({targets.dailyCalories} kcal)
+              Daily Calorie Intake vs Historical Target
             </h3>
           </div>
 
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis dataKey="date" stroke="#64748b" fontSize={11} />
                 <YAxis stroke="#64748b" fontSize={11} />
                 <Tooltip
                   contentStyle={{ backgroundColor: "#ffffff", borderColor: "#e2e8f0", borderRadius: "12px", color: "#0f172a", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)" }}
-                  formatter={(value: any) => [`${value} kcal`, "Calories"]}
+                  formatter={(value: any, name: any) => [`${value} kcal`, name === "Daily target" ? "Daily target" : "Calories"]}
                 />
-                <ReferenceLine y={targets.dailyCalories} stroke="#f43f5e" strokeDasharray="4 4" label={{ value: `Target ${targets.dailyCalories}`, fill: "#f43f5e", fontSize: 10 }} />
                 <Bar dataKey="calories" fill="#f59e0b" radius={[6, 6, 0, 0]} />
-              </BarChart>
+                <Line type="stepAfter" dataKey="calorieTarget" name="Daily target" stroke="#f43f5e" strokeWidth={2} strokeDasharray="5 4" dot={false} />
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         </div>

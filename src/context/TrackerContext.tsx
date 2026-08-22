@@ -6,7 +6,8 @@ import {
   DailyLogEntry, 
   HealthMetric, 
   LabTestRecord, 
-  PeriodicCheckItem 
+  PeriodicCheckItem,
+  TargetHistoryEntry,
 } from "../types";
 import { 
   initialTargets, 
@@ -22,12 +23,15 @@ import { formatDateForDisplay } from "../utils/nutritionCalculator";
 import { sortDailyLogs } from "../utils/logSorting";
 import { createDefaultEatMePlan } from "../data/defaultEatMePlan";
 import { EatMeFoodMapping, EatMeManualCheckIn, EatMePlan, EatMeRawTick } from "../types/eatMe";
+import { getLatestWeightGoalRevisionDate, resolveTargetsForDate, upsertTargetRevision } from "../utils/targetHistory";
 
 interface TrackerContextType {
   selectedDate: string;
   setSelectedDate: (date: string) => void;
   targets: PersonalTargets;
   updateTargets: (newTargets: Partial<PersonalTargets>) => void;
+  getTargetsForDate: (date: string) => PersonalTargets;
+  getWeightGoalRevisionDateForDate: (date: string) => string | undefined;
   profile: UserProfile;
   updateProfile: (newProfile: Partial<UserProfile>) => void;
   foodLibrary: FoodItem[];
@@ -81,6 +85,7 @@ const STORAGE_KEYS = {
   EAT_ME_MAPPINGS: "health_tracker_eat_me_mappings_v1",
   EAT_ME_CHECK_INS: "health_tracker_eat_me_check_ins_v1",
   EAT_ME_RAW_TICKS: "health_tracker_eat_me_raw_ticks_v1",
+  TARGET_HISTORY: "health_tracker_target_history_v1",
 };
 
 const loadJson = <T,>(key: string, fallback: T): T => {
@@ -113,14 +118,36 @@ const loadFoodCategories = () => {
   return [...discovered];
 };
 
+const earliestTrackedDate = () => {
+  const dates: string[] = [];
+  [STORAGE_KEYS.DAILY_LOGS, STORAGE_KEYS.HEALTH_METRICS].forEach((key) => {
+    const records = loadJson<Array<{ date?: unknown }>>(key, []);
+    records.forEach((record) => {
+      if (typeof record.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(record.date)) dates.push(record.date);
+    });
+  });
+  return dates.sort()[0] || new Date().toLocaleDateString("en-CA");
+};
+
 export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [selectedDate, setSelectedDateState] = useState<string>(() => {
     return localStorage.getItem(STORAGE_KEYS.SELECTED_DATE) || new Date().toLocaleDateString("en-CA");
   });
 
   const [targets, setTargets] = useState<PersonalTargets>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.TARGETS);
-    return saved ? JSON.parse(saved) : initialTargets;
+    const saved = loadJson<Partial<PersonalTargets>>(STORAGE_KEYS.TARGETS, {});
+    return { ...initialTargets, ...saved };
+  });
+
+  const [targetHistory, setTargetHistory] = useState<TargetHistoryEntry[]>(() => {
+    const saved = loadJson<TargetHistoryEntry[]>(STORAGE_KEYS.TARGET_HISTORY, []);
+    const valid = saved
+      .filter((entry) => /^\d{4}-\d{2}-\d{2}$/.test(entry?.effectiveDate) && typeof entry?.targets === "object")
+      .map((entry) => ({ ...entry, targets: { ...initialTargets, ...entry.targets } }))
+      .sort((a, b) => a.effectiveDate.localeCompare(b.effectiveDate));
+    return valid.length > 0
+      ? valid
+      : [{ effectiveDate: earliestTrackedDate(), targets }];
   });
 
   const [profile, setProfile] = useState<UserProfile>(() => {
@@ -162,6 +189,10 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.TARGETS, JSON.stringify(targets));
   }, [targets]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.TARGET_HISTORY, JSON.stringify(targetHistory));
+  }, [targetHistory]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile));
@@ -208,7 +239,18 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const updateTargets = (newTargets: Partial<PersonalTargets>) => {
-    setTargets((prev) => ({ ...prev, ...newTargets }));
+    const nextTargets = { ...targets, ...newTargets };
+    const effectiveDate = new Date().toLocaleDateString("en-CA");
+    setTargets(nextTargets);
+    setTargetHistory((previous) => upsertTargetRevision(previous, effectiveDate, nextTargets));
+  };
+
+  const getTargetsForDate = (date: string) => {
+    return { ...initialTargets, ...resolveTargetsForDate(targetHistory, date, targets) };
+  };
+
+  const getWeightGoalRevisionDateForDate = (date: string) => {
+    return getLatestWeightGoalRevisionDate(targetHistory, date);
   };
 
   const updateProfile = (newProfile: Partial<UserProfile>) => {
@@ -414,6 +456,8 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setSelectedDate,
         targets,
         updateTargets,
+        getTargetsForDate,
+        getWeightGoalRevisionDateForDate,
         profile,
         updateProfile,
         foodLibrary,

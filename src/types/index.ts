@@ -60,6 +60,8 @@ export interface LabTestRecord {
 export interface PersonalTargets {
   dailyCalories: number;
   proteinGrams: number;
+  carbsGrams: number;
+  fatGrams: number;
   fiberGrams: number;
   waterMl: number;
   walkKm: number;
@@ -68,6 +70,13 @@ export interface PersonalTargets {
   currentWeightKg: number;
   heightCm: number;
   waistInch: number;
+  goalIntensity: "easy" | "medium" | "hard";
+  goalBasisWeightKg: number;
+}
+
+export interface TargetHistoryEntry {
+  effectiveDate: string;
+  targets: PersonalTargets;
 }
 
 export interface UserProfile {

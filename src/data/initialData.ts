@@ -13,6 +13,8 @@ import {
 export const initialTargets: PersonalTargets = {
   dailyCalories: 0,
   proteinGrams: 0,
+  carbsGrams: 0,
+  fatGrams: 0,
   fiberGrams: 0,
   waterMl: 0,
   walkKm: 0,
@@ -21,6 +23,8 @@ export const initialTargets: PersonalTargets = {
   currentWeightKg: 0,
   heightCm: 0,
   waistInch: 0,
+  goalIntensity: "easy",
+  goalBasisWeightKg: 0,
 };
 
 export const initialProfile: UserProfile = {

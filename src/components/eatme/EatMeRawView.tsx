@@ -1,10 +1,12 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   CalendarDays,
   CheckSquare2,
   ChevronLeft,
   ChevronRight,
+  ListTree,
+  X,
 } from "lucide-react";
 import { useTracker } from "../../context/TrackerContext";
 
@@ -28,6 +30,16 @@ export const EatMeRawView: React.FC<EatMeRawViewProps> = ({ onBack }) => {
     toggleEatMeRawTick,
   } = useTracker();
   const [month, setMonth] = useState(selectedDate.slice(0, 7));
+  const [showSections, setShowSections] = useState(false);
+
+  useEffect(() => {
+    if (!showSections) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setShowSections(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [showSections]);
 
   const ticksForMonth = useMemo(
     () => new Map(
@@ -66,8 +78,16 @@ export const EatMeRawView: React.FC<EatMeRawViewProps> = ({ onBack }) => {
     setMonth(`${shifted.getFullYear()}-${String(shifted.getMonth() + 1).padStart(2, "0")}`);
   };
 
+  const goToSection = (sectionIndex: number) => {
+    setShowSections(false);
+    document.getElementById(`eat-me-raw-section-${sectionIndex}`)?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  };
+
   return (
-    <div className="mx-auto max-w-5xl space-y-5 pb-8">
+    <div className="mx-auto max-w-5xl space-y-5 pb-24 sm:pb-8">
       <header className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
         <button
           type="button"
@@ -159,7 +179,11 @@ export const EatMeRawView: React.FC<EatMeRawViewProps> = ({ onBack }) => {
 
         <div className="space-y-8 px-3 py-6 sm:px-6">
           {eatMePlan.sections.map((section, sectionIndex) => (
-            <section key={section.id}>
+            <section
+              key={section.id}
+              id={`eat-me-raw-section-${sectionIndex}`}
+              className="scroll-mt-36"
+            >
               <div className="mb-3 border-y-2 border-slate-800 py-2 text-center font-mono">
                 <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
                   Section {String(sectionIndex + 1).padStart(2, "0")}
@@ -167,8 +191,38 @@ export const EatMeRawView: React.FC<EatMeRawViewProps> = ({ onBack }) => {
                 <h3 className="text-sm font-black uppercase text-slate-950 sm:text-base">{section.title}</h3>
               </div>
 
-              <div className="overflow-x-auto rounded-lg border border-slate-300 bg-white">
-                <table className="w-full min-w-[560px] border-collapse font-mono text-xs sm:text-sm">
+              <div className="overflow-hidden rounded-lg border border-slate-300 bg-white sm:hidden">
+                {section.foods.map((food) => (
+                  <div key={food.id} className="border-b border-slate-200 last:border-b-0">
+                    <div className="bg-white px-3 py-2.5 font-mono text-sm leading-5 text-slate-800">
+                      {food.name}
+                    </div>
+                    <div className="grid grid-cols-5 border-t border-slate-100 bg-slate-50/80">
+                      {[1, 2, 3, 4, 5].map((week) => {
+                        const checked = ticksForMonth.get(food.id)?.has(week) ?? false;
+                        return (
+                          <label
+                            key={week}
+                            className="flex min-h-12 cursor-pointer flex-col items-center justify-center gap-1 border-r border-slate-200 py-1.5 font-mono text-[10px] font-bold text-slate-500 last:border-r-0"
+                          >
+                            W{week}
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleEatMeRawTick(month, food.id, week)}
+                              aria-label={`${food.name}, week ${week}, ${formatMonth(month)}`}
+                              className="h-4 w-4 cursor-pointer accent-emerald-600"
+                            />
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="hidden overflow-x-auto rounded-lg border border-slate-300 bg-white sm:block">
+                <table className="w-full min-w-[560px] border-collapse font-mono text-sm">
                   <thead>
                     <tr className="border-b-2 border-slate-700 bg-slate-50 text-slate-800">
                       <th scope="col" className="sticky left-0 z-10 min-w-[300px] border-r border-slate-300 bg-slate-50 px-3 py-2 text-left font-bold">
@@ -219,6 +273,67 @@ export const EatMeRawView: React.FC<EatMeRawViewProps> = ({ onBack }) => {
           This is a variety checklist, not a calorie plan or treatment diet. Portions must suit your health needs.
         </div>
       </section>
+
+      {showSections && (
+        <button
+          type="button"
+          aria-label="Close section navigator"
+          onClick={() => setShowSections(false)}
+          className="fixed inset-0 z-[55] cursor-default bg-slate-950/10"
+        />
+      )}
+
+      <div className="fixed bottom-5 right-4 z-[60] flex flex-col items-end gap-3 sm:bottom-6 sm:right-6">
+        {showSections && (
+          <div
+            id="eat-me-raw-section-menu"
+            className="w-[calc(100vw-2rem)] max-w-xs overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+          >
+            <div className="flex items-center justify-between border-b border-slate-200 bg-emerald-50 px-4 py-3">
+              <div>
+                <p className="text-sm font-black text-emerald-950">Jump to section</p>
+                <p className="text-[11px] text-emerald-700">{eatMePlan.sections.length} checklist sections</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSections(false)}
+                aria-label="Close section list"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-emerald-700 transition-colors hover:bg-emerald-100"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <nav aria-label="Eat Me Raw sections" className="max-h-[60vh] overflow-y-auto p-2">
+              {eatMePlan.sections.map((section, sectionIndex) => (
+                <button
+                  key={section.id}
+                  type="button"
+                  onClick={() => goToSection(sectionIndex)}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-emerald-50"
+                >
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[10px] font-black text-slate-600">
+                    {String(sectionIndex + 1).padStart(2, "0")}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-800">{section.title}</span>
+                  <span className="shrink-0 text-[10px] text-slate-400">{section.foods.length}</span>
+                </button>
+              ))}
+            </nav>
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={() => setShowSections((visible) => !visible)}
+          aria-label={showSections ? "Close section navigator" : "Open section navigator"}
+          aria-expanded={showSections}
+          aria-controls="eat-me-raw-section-menu"
+          title="Jump to a food section"
+          className="flex h-14 w-14 items-center justify-center rounded-full border-4 border-white bg-emerald-600 text-white shadow-xl transition-all hover:bg-emerald-700 active:scale-95"
+        >
+          {showSections ? <X className="h-6 w-6" /> : <ListTree className="h-6 w-6" />}
+        </button>
+      </div>
     </div>
   );
 };
