@@ -20,6 +20,8 @@ interface EatMeRawViewProps {
   onBack: () => void;
 }
 
+const RAW_MONTH_SESSION_KEY = "nutrimetric_eat_me_raw_month_session_v1";
+
 const formatMonth = (month: string) => {
   const [year, monthNumber] = month.split("-").map(Number);
   return new Intl.DateTimeFormat("en-IN", {
@@ -40,7 +42,9 @@ export const EatMeRawView: React.FC<EatMeRawViewProps> = ({ onBack }) => {
     resetEatMePlan,
     toggleEatMeRawTick,
   } = useTracker();
-  const [month, setMonth] = useState(selectedDate.slice(0, 7));
+  const [month, setMonth] = useState(() =>
+    sessionStorage.getItem(RAW_MONTH_SESSION_KEY) || selectedDate.slice(0, 7)
+  );
   const [showSections, setShowSections] = useState(false);
   const [importPreview, setImportPreview] = useState<EatMeImportPreview>();
   const [importError, setImportError] = useState<string>();
@@ -71,6 +75,10 @@ export const EatMeRawView: React.FC<EatMeRawViewProps> = ({ onBack }) => {
       setImportError(error instanceof Error ? error.message : "The checklist could not be imported.");
     }
   };
+
+  useEffect(() => {
+    sessionStorage.setItem(RAW_MONTH_SESSION_KEY, month);
+  }, [month]);
 
   useEffect(() => {
     if (!showSections) return;

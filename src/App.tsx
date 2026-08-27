@@ -109,9 +109,9 @@ function MainApp() {
 
         {activeTab === "categories" && <FoodCategoriesView />}
 
-        <div className={activeTab === "eatmeraw" ? "" : "hidden"} aria-hidden={activeTab !== "eatmeraw"}>
+        {activeTab === "eatmeraw" && (
           <EatMeRawView onBack={closeEatMeRaw} />
-        </div>
+        )}
       </main>
 
       {activeTab !== "eatmeraw" && (

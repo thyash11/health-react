@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { 
   Flame, 
   Dumbbell, 
@@ -9,6 +9,7 @@ import {
   Clock, 
   AlertTriangle, 
   CheckCircle2, 
+  Copy,
   Utensils,
 } from "lucide-react";
 import { useTracker } from "../../context/TrackerContext";
@@ -27,6 +28,7 @@ interface DashboardViewProps {
 export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigateToFoodLog,
 }) => {
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
   const {
     selectedDate,
     setSelectedDate,
@@ -93,6 +95,66 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     : null;
 
   const scoreInfo = getScoreColor(summary.score);
+  const isToday = selectedDate === new Date().toLocaleDateString("en-CA");
+
+  const copyDailyUpdate = async () => {
+    const mealLines = mealBreakdown.flatMap(({ meal, items }) => {
+      if (items.length === 0) return [];
+      return [
+        `${meal}:`,
+        ...items.map((item) => {
+          const ingredients = item.primaryIngredients?.length
+            ? ` | Primary ingredients: ${item.primaryIngredients.join(", ")}`
+            : "";
+          const notes = item.notes ? ` | Notes: ${item.notes}` : "";
+          return `- ${item.time || "Time not recorded"}: ${item.foodItem}, ${item.quantityGrams}g/ml, ${item.calories} kcal, P ${item.protein}g, C ${item.carbs}g, F ${item.fat}g, fiber ${item.fiber}g${ingredients}${notes}`;
+        }),
+      ];
+    });
+    const targetText = (value: number, unit: string) => value > 0 ? `${value}${unit}` : "not set";
+    const weightLine = currentWeight > 0
+      ? `${currentWeight} kg${dayTargets.goalWeightKg > 0 ? ` / goal ${dayTargets.goalWeightKg} kg (${weightGoalProgress}% progress${weightGoalDaysLeft === null ? "" : `, ${weightGoalDaysLeft} days left`})` : ""}`
+      : "Not recorded";
+    const text = [
+      `NutriMetric daily update — ${formatDateForDisplay(selectedDate)}`,
+      "",
+      "Dashboard stats",
+      `- Daily health score: ${summary.score}%`,
+      `- Calories: ${summary.totalCalories} / ${targetText(dayTargets.dailyCalories, " kcal")}`,
+      `- Protein: ${summary.totalProtein}g / ${targetText(dayTargets.proteinGrams, "g")}`,
+      `- Carbohydrates: ${summary.totalCarbs}g / ${targetText(dayTargets.carbsGrams, "g")}`,
+      `- Fat: ${summary.totalFat}g / ${targetText(fatTargetGrams, "g max")}`,
+      `- Fiber: ${summary.totalFiber}g / ${targetText(dayTargets.fiberGrams, "g")}`,
+      `- Water: ${summary.totalWater}ml / ${targetText(dayTargets.waterMl, "ml")}`,
+      `- Walk: ${summary.totalWalkKm} km / ${targetText(dayTargets.walkKm, " km")}`,
+      `- Weight: ${weightLine}`,
+      "",
+      "Foods eaten",
+      ...(mealLines.length > 0 ? mealLines : ["- No food entries logged."]),
+      "",
+      "Approximate summary based on the foods, portions and nutrition values entered in NutriMetric.",
+    ].join("\n");
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.opacity = "0";
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        textArea.remove();
+      }
+      setCopyStatus("copied");
+      window.setTimeout(() => setCopyStatus("idle"), 2200);
+    } catch {
+      setCopyStatus("error");
+      window.setTimeout(() => setCopyStatus("idle"), 2200);
+    }
+  };
 
   // Recent 10 dates list for summary table
   const uniqueDates = Array.from(
@@ -280,6 +342,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <CheckCircle2 className="w-5 h-5 text-emerald-500 absolute" />
         </div>
       </div>
+
+      <button
+        type="button"
+        onClick={copyDailyUpdate}
+        className={`flex w-full items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold shadow-sm transition-colors ${
+          copyStatus === "copied"
+            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+            : copyStatus === "error"
+              ? "border-red-200 bg-red-50 text-red-700"
+              : "border-slate-200 bg-white text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+        }`}
+      >
+        {copyStatus === "copied" ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+        <span>{copyStatus === "copied" ? "Copied for ChatGPT" : copyStatus === "error" ? "Could not copy" : `Copy ${isToday ? "today’s" : "day’s"} food & dashboard stats`}</span>
+        {copyStatus === "idle" && <span className="font-normal text-slate-400">· approximate</span>}
+      </button>
 
       {/* Main Grid: Meals Breakdown + Daily Log History Table */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
