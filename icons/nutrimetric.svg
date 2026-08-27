@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="NutriMetric">
+  <rect width="512" height="512" rx="112" fill="#2563eb"/>
+  <circle cx="256" cy="256" r="150" fill="#ffffff" opacity="0.12"/>
+  <path d="M92 274h89l37-94 72 174 47-104h83" fill="none" stroke="#ffffff" stroke-width="38" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="420" cy="250" r="22" fill="#34d399"/>
+</svg>
