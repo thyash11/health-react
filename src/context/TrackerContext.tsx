@@ -60,8 +60,6 @@ interface TrackerContextType {
   deleteFoodCategory: (name: string) => void;
   eatMePlan: EatMePlan;
   eatMeMappings: EatMeFoodMapping[];
-  replaceEatMePlan: (plan: EatMePlan) => boolean;
-  resetEatMePlan: () => boolean;
   eatMeRawTicks: EatMeRawTick[];
   toggleEatMeRawTick: (month: string, itemId: string, week: number) => void;
 }
@@ -172,8 +170,8 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const [periodicChecks] = useState<PeriodicCheckItem[]>(initialPeriodicChecks);
   const [foodCategories, setFoodCategories] = useState<string[]>(loadFoodCategories);
-  const [eatMePlan, setEatMePlan] = useState<EatMePlan>(() => loadJson(STORAGE_KEYS.EAT_ME_PLAN, createDefaultEatMePlan()));
-  const [eatMeMappings, setEatMeMappings] = useState<EatMeFoodMapping[]>(() => loadJson(STORAGE_KEYS.EAT_ME_MAPPINGS, []));
+  const [eatMePlan] = useState<EatMePlan>(() => loadJson(STORAGE_KEYS.EAT_ME_PLAN, createDefaultEatMePlan()));
+  const [eatMeMappings] = useState<EatMeFoodMapping[]>(() => loadJson(STORAGE_KEYS.EAT_ME_MAPPINGS, []));
   const [eatMeRawTicks, setEatMeRawTicks] = useState<EatMeRawTick[]>(() => loadJson(STORAGE_KEYS.EAT_ME_RAW_TICKS, []));
 
   useEffect(() => {
@@ -388,25 +386,6 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setFoodCategories((previous) => previous.filter((item) => item !== name));
   };
 
-  const replaceEatMePlan = (plan: EatMePlan) => {
-    if (!window.confirm(`Replace the active Eat Me plan with “${plan.name}”? Food logs will not be changed.`)) return false;
-    const validItemIds = new Set(plan.sections.flatMap((section) => section.foods.map((food) => food.id)));
-    setEatMeMappings((previous) => previous
-      .map((mapping) => ({ ...mapping, checklistItemIds: mapping.checklistItemIds.filter((id) => validItemIds.has(id)) }))
-      .filter((mapping) => mapping.ignored || mapping.checklistItemIds.length > 0));
-    setEatMePlan(plan);
-    return true;
-  };
-
-  const resetEatMePlan = () => {
-    if (!window.confirm("Reset Eat Me to the built-in South Indian monthly checklist? Food logs will not be changed.")) return false;
-    const plan = createDefaultEatMePlan();
-    const validItemIds = new Set(plan.sections.flatMap((section) => section.foods.map((food) => food.id)));
-    setEatMeMappings((previous) => previous.filter((mapping) => mapping.ignored || mapping.checklistItemIds.every((id) => validItemIds.has(id))));
-    setEatMePlan(plan);
-    return true;
-  };
-
   const toggleEatMeRawTick = (month: string, itemId: string, week: number) => {
     if (week < 1 || week > 5) return;
     setEatMeRawTicks((previous) => {
@@ -458,8 +437,6 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
         deleteFoodCategory,
         eatMePlan,
         eatMeMappings,
-        replaceEatMePlan,
-        resetEatMePlan,
         eatMeRawTicks,
         toggleEatMeRawTick,
       }}

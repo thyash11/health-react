@@ -106,10 +106,3 @@ export function importTrackerBackup(contents: string) {
     }
   });
 }
-
-export function deleteAllTrackerData() {
-  Object.values(TRACKER_STORAGE_KEYS).forEach((storageKey) => {
-    localStorage.removeItem(storageKey);
-  });
-  localStorage.removeItem("health_tracker_eat_me_check_ins_v1");
-}

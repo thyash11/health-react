@@ -1,8 +1,7 @@
 import React, { useRef, useState } from "react";
-import { Download, FileJson, Trash2, Upload } from "lucide-react";
+import { Download, FileJson, Upload } from "lucide-react";
 import {
   BACKUP_FILE_NAME,
-  deleteAllTrackerData,
   downloadTrackerBackup,
   importTrackerBackup,
 } from "../../utils/trackerBackup";
@@ -26,18 +25,6 @@ export const SettingsView: React.FC = () => {
       setMessage(undefined);
       setError(importError instanceof Error ? importError.message : "Import failed.");
     }
-  };
-
-  const handleDelete = () => {
-    const confirmed = window.confirm(
-      "Delete all NutriMetric data from this browser? This cannot be undone unless you import your exported backup.",
-    );
-    if (!confirmed) return;
-
-    deleteAllTrackerData();
-    setError(undefined);
-    setMessage("Local tracker data deleted. Reloading…");
-    window.setTimeout(() => window.location.reload(), 500);
   };
 
   return (
@@ -97,20 +84,6 @@ export const SettingsView: React.FC = () => {
         {error && <p role="alert" className="mt-4 text-sm font-medium text-red-700">{error}</p>}
       </div>
 
-      <div className="mt-5 rounded-2xl border border-red-200 bg-white p-5 shadow-sm sm:p-6">
-        <h3 className="font-semibold text-slate-900">Local data</h3>
-        <p className="mt-1 text-sm leading-6 text-slate-500">
-          Permanently remove all tracker data and saved target/profile settings from this browser.
-        </p>
-        <button
-          type="button"
-          onClick={handleDelete}
-          className="mt-4 flex items-center justify-center gap-2 rounded-xl border border-red-300 bg-white px-4 py-3 text-sm font-semibold text-red-700 transition-colors hover:bg-red-50"
-        >
-          <Trash2 className="h-4 w-4" />
-          Delete all local data
-        </button>
-      </div>
     </section>
   );
 };

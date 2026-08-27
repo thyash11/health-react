@@ -1,20 +1,15 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   CalendarDays,
   CheckSquare2,
   ChevronLeft,
   ChevronRight,
-  Download,
   ListTree,
-  RotateCcw,
-  Upload,
   X,
 } from "lucide-react";
 import { useTracker } from "../../context/TrackerContext";
 import { deriveAutomaticEatMeRawTicks } from "../../utils/eatMeRawMatching";
-import { exportEatMePlan, parseEatMeChecklistText, parseEatMePlanJson } from "../../utils/eatMePlan";
-import { EatMeImportPreview } from "../../types/eatMe";
 
 interface EatMeRawViewProps {
   onBack: () => void;
@@ -38,43 +33,12 @@ export const EatMeRawView: React.FC<EatMeRawViewProps> = ({ onBack }) => {
     eatMeRawTicks,
     dailyLogs,
     foodLibrary,
-    replaceEatMePlan,
-    resetEatMePlan,
     toggleEatMeRawTick,
   } = useTracker();
   const [month, setMonth] = useState(() =>
     sessionStorage.getItem(RAW_MONTH_SESSION_KEY) || selectedDate.slice(0, 7)
   );
   const [showSections, setShowSections] = useState(false);
-  const [importPreview, setImportPreview] = useState<EatMeImportPreview>();
-  const [importError, setImportError] = useState<string>();
-  const planFileInputRef = useRef<HTMLInputElement>(null);
-
-  const downloadPlan = () => {
-    const blob = new Blob([exportEatMePlan(eatMePlan)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "nutrimetric-eat-me-raw-plan.json";
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handlePlanFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-    try {
-      const contents = await file.text();
-      setImportPreview(file.name.toLowerCase().endsWith(".json")
-        ? parseEatMePlanJson(contents)
-        : parseEatMeChecklistText(contents));
-      setImportError(undefined);
-    } catch (error) {
-      setImportPreview(undefined);
-      setImportError(error instanceof Error ? error.message : "The checklist could not be imported.");
-    }
-  };
 
   useEffect(() => {
     sessionStorage.setItem(RAW_MONTH_SESSION_KEY, month);
@@ -217,31 +181,6 @@ export const EatMeRawView: React.FC<EatMeRawViewProps> = ({ onBack }) => {
           </div>
         </div>
       </header>
-
-      <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <button type="button" onClick={downloadPlan} className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
-            <Download className="h-4 w-4" /> Export plan
-          </button>
-          <button type="button" onClick={() => planFileInputRef.current?.click()} className="flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100">
-            <Upload className="h-4 w-4" /> Import TXT / JSON
-          </button>
-          <input ref={planFileInputRef} type="file" accept=".txt,.json,text/plain,application/json" onChange={handlePlanFile} className="hidden" />
-          <button type="button" onClick={resetEatMePlan} className="flex items-center gap-1.5 rounded-xl border border-amber-200 px-3 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-50">
-            <RotateCcw className="h-4 w-4" /> Reset default
-          </button>
-        </div>
-        {importError && <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-red-700">{importError}</p>}
-        {importPreview && (
-          <div className="mt-3 flex flex-col gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 text-xs text-emerald-900 sm:flex-row sm:items-center sm:justify-between">
-            <p><strong>{importPreview.plan.name}</strong> · {importPreview.sectionCount} sections · {importPreview.foodCount} foods</p>
-            <div className="flex gap-2">
-              <button type="button" onClick={() => setImportPreview(undefined)} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-semibold text-slate-600">Cancel</button>
-              <button type="button" onClick={() => { if (replaceEatMePlan(importPreview.plan)) setImportPreview(undefined); }} className="rounded-lg bg-emerald-600 px-3 py-1.5 font-semibold text-white">Replace plan</button>
-            </div>
-          </div>
-        )}
-      </section>
 
       <section className="overflow-hidden rounded-2xl border border-emerald-200 bg-[#fffef8] shadow-sm">
         <div className="border-b border-emerald-200 bg-emerald-50/70 px-4 py-5 text-center sm:px-6">
