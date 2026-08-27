@@ -19,6 +19,7 @@ import { getCurrentMealAndTime, MEAL_DEFAULT_TIMES, MEAL_TYPES, isMealType } fro
 import { TimePicker } from "../TimePicker";
 import { sortDailyLogs } from "../../utils/logSorting";
 import { cleanPrimaryIngredients, parsePrimaryIngredients } from "../../utils/primaryIngredients";
+import { useBrowserBackDismiss } from "../../hooks/useBrowserBackDismiss";
 
 interface DailyFoodLogViewProps {
   prefillFood?: FoodItem | null;
@@ -70,6 +71,11 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({
   const [formNotes, setFormNotes] = useState("");
   const [formPrimaryIngredients, setFormPrimaryIngredients] = useState("");
   const [showFoodSuggestions, setShowFoodSuggestions] = useState(false);
+
+  useBrowserBackDismiss(showAddForm, () => {
+    setShowAddForm(false);
+    setEditingId(null);
+  });
 
   const sampleJson = JSON.stringify({
     date: selectedDate,

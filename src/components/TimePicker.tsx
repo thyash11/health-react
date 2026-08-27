@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Check, Clock3 } from "lucide-react";
+import { useBrowserBackDismiss } from "../hooks/useBrowserBackDismiss";
 
 interface TimePickerProps {
   value: string;
@@ -20,6 +21,8 @@ export const TimePicker: React.FC<TimePickerProps> = ({ value, onChange }) => {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const parsed = parseTime(value);
+
+  useBrowserBackDismiss(open, () => setOpen(false));
 
   const update = (part: Partial<typeof parsed>) => {
     const next = { ...parsed, ...part };

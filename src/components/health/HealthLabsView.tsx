@@ -14,6 +14,7 @@ import { formatDateForDisplay } from "../../utils/nutritionCalculator";
 import { FormattedDateInput } from "../FormattedDateInput";
 import { WeightTrackingPanel } from "./WeightTrackingPanel";
 import { NutritionGoalsPanel } from "./NutritionGoalsPanel";
+import { useBrowserBackDismiss } from "../../hooks/useBrowserBackDismiss";
 
 export const HealthLabsView: React.FC = () => {
   const { 
@@ -33,6 +34,8 @@ export const HealthLabsView: React.FC = () => {
   const [testTarget, setTestTarget] = useState("< 200");
   const [testStatus, setTestStatus] = useState<LabTestRecord["status"]>("Normal");
   const [testNotes, setTestNotes] = useState("");
+
+  useBrowserBackDismiss(showAddLab, () => setShowAddLab(false));
 
   useEffect(() => {
     if (!showAddLab) return;

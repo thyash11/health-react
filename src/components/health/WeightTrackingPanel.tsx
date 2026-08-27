@@ -22,6 +22,7 @@ import { useTracker } from "../../context/TrackerContext";
 import { formatDateForDisplay } from "../../utils/nutritionCalculator";
 import { getWeightMetricsChronological } from "../../utils/weightMetrics";
 import { FormattedDateInput } from "../FormattedDateInput";
+import { useBrowserBackDismiss } from "../../hooks/useBrowserBackDismiss";
 
 const today = () => new Date().toLocaleDateString("en-CA");
 
@@ -40,6 +41,8 @@ export const WeightTrackingPanel: React.FC = () => {
   const [diastolic, setDiastolic] = useState("");
   const [heartRate, setHeartRate] = useState("");
   const [notes, setNotes] = useState("");
+
+  useBrowserBackDismiss(showAddWeight, () => setShowAddWeight(false));
 
   const weightMetrics = useMemo(
     () => getWeightMetricsChronological(healthMetrics),

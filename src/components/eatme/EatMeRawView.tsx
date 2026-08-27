@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useTracker } from "../../context/TrackerContext";
 import { deriveAutomaticEatMeRawTicks } from "../../utils/eatMeRawMatching";
+import { useBrowserBackDismiss } from "../../hooks/useBrowserBackDismiss";
 
 interface EatMeRawViewProps {
   onBack: () => void;
@@ -39,6 +40,8 @@ export const EatMeRawView: React.FC<EatMeRawViewProps> = ({ onBack }) => {
     sessionStorage.getItem(RAW_MONTH_SESSION_KEY) || selectedDate.slice(0, 7)
   );
   const [showSections, setShowSections] = useState(false);
+
+  useBrowserBackDismiss(showSections, () => setShowSections(false));
 
   useEffect(() => {
     sessionStorage.setItem(RAW_MONTH_SESSION_KEY, month);
@@ -131,7 +134,7 @@ export const EatMeRawView: React.FC<EatMeRawViewProps> = ({ onBack }) => {
           className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-slate-600 transition-colors hover:text-emerald-700"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to previous page
+          Back to dashboard
         </button>
 
         <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">

@@ -15,6 +15,15 @@ import { FormattedDateInput } from "./FormattedDateInput";
 
 export type TabType = "dashboard" | "foodlog" | "habits" | "analytics" | "library" | "health" | "eatmeraw" | "categories" | "settings";
 
+export const PRIMARY_NAV_TABS = [
+  "dashboard",
+  "foodlog",
+  "library",
+  "habits",
+  "analytics",
+  "health",
+] as const satisfies readonly TabType[];
+
 interface NavigationProps {
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;

@@ -17,6 +17,7 @@ import { useTracker } from "../../context/TrackerContext";
 import { FoodItem, FoodCategory } from "../../types";
 import { formatDateForDisplay } from "../../utils/nutritionCalculator";
 import { cleanPrimaryIngredients, parsePrimaryIngredients } from "../../utils/primaryIngredients";
+import { useBrowserBackDismiss } from "../../hooks/useBrowserBackDismiss";
 
 interface FoodLibraryViewProps {
   onLogFood: (food: FoodItem) => void;
@@ -167,6 +168,8 @@ export const FoodLibraryView: React.FC<FoodLibraryViewProps> = ({ onLogFood }) =
     setShowAddModal(false);
     resetFoodEditor();
   };
+
+  useBrowserBackDismiss(showAddModal, closeFoodEditor);
 
   const openNewFoodEditor = () => {
     resetFoodEditor();

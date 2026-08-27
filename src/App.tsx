@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { TrackerProvider } from "./context/TrackerContext";
-import { Navigation, TabType } from "./components/Navigation";
+import { Navigation, PRIMARY_NAV_TABS, TabType } from "./components/Navigation";
 import { DashboardView } from "./components/dashboard/DashboardView";
 import { DailyFoodLogView } from "./components/foodlog/DailyFoodLogView";
 import { HabitsView } from "./components/habits/HabitsView";
@@ -12,41 +12,114 @@ import { FoodCategoriesView } from "./components/categories/FoodCategoriesView";
 import { ListChecks, Settings, Tags } from "lucide-react";
 import { FoodItem } from "./types";
 import { EatMeRawView } from "./components/eatme/EatMeRawView";
+import { shouldSkipPageBackForOverlay } from "./hooks/useBrowserBackDismiss";
+import { useSwipeNavigation } from "./hooks/useSwipeNavigation";
 
 function MainApp() {
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [foodLogDraft, setFoodLogDraft] = useState<FoodItem | null>(null);
   const [openFoodLogRequest, setOpenFoodLogRequest] = useState<number | null>(null);
+  const activeTabRef = useRef<TabType>("dashboard");
+  const hasDashboardHistoryEntry = useRef(false);
+  const dashboardScrollPosition = useRef(0);
   const rawScrollPosition = useRef(0);
-  const rawOrigin = useRef<{ tab: TabType; scrollY: number }>({ tab: "dashboard", scrollY: 0 });
   const [pendingScrollRestore, setPendingScrollRestore] = useState<number | null>(null);
+
+  const openTab = (tab: Exclude<TabType, "dashboard">) => {
+    const currentTab = activeTabRef.current;
+
+    if (currentTab === "eatmeraw") {
+      rawScrollPosition.current = window.scrollY;
+    }
+
+    if (currentTab === "dashboard") {
+      dashboardScrollPosition.current = window.scrollY;
+      window.history.pushState(
+        { ...window.history.state, nutrimetricTab: tab },
+        "",
+        window.location.href,
+      );
+      hasDashboardHistoryEntry.current = true;
+    } else {
+      window.history.replaceState(
+        { ...window.history.state, nutrimetricTab: tab },
+        "",
+        window.location.href,
+      );
+    }
+
+    activeTabRef.current = tab;
+    setActiveTab(tab);
+  };
+
+  const goToDashboard = () => {
+    if (activeTabRef.current === "dashboard") return;
+
+    if (activeTabRef.current === "eatmeraw") {
+      rawScrollPosition.current = window.scrollY;
+    }
+
+    activeTabRef.current = "dashboard";
+    setActiveTab("dashboard");
+    setPendingScrollRestore(dashboardScrollPosition.current);
+
+    if (hasDashboardHistoryEntry.current) {
+      hasDashboardHistoryEntry.current = false;
+      window.history.back();
+    } else {
+      window.history.replaceState(
+        { ...window.history.state, nutrimetricTab: "dashboard" },
+        "",
+        window.location.href,
+      );
+    }
+  };
 
   const openFoodLogForm = () => {
     setFoodLogDraft(null);
     setOpenFoodLogRequest(Date.now());
-    setActiveTab("foodlog");
+    openTab("foodlog");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const openEatMeRaw = () => {
-    rawOrigin.current = { tab: activeTab, scrollY: window.scrollY };
-    setActiveTab("eatmeraw");
+    openTab("eatmeraw");
     setPendingScrollRestore(rawScrollPosition.current);
   };
 
   const closeEatMeRaw = () => {
-    rawScrollPosition.current = window.scrollY;
-    setActiveTab(rawOrigin.current.tab === "eatmeraw" ? "dashboard" : rawOrigin.current.tab);
-    setPendingScrollRestore(rawOrigin.current.scrollY);
+    goToDashboard();
   };
 
   const navigateToTab = (tab: TabType) => {
-    if (activeTab === "eatmeraw") {
-      rawScrollPosition.current = window.scrollY;
-      setPendingScrollRestore(tab === rawOrigin.current.tab ? rawOrigin.current.scrollY : 0);
+    if (tab === "dashboard") {
+      goToDashboard();
+      return;
     }
-    setActiveTab(tab);
+
+    const leavingEatMeRaw = activeTabRef.current === "eatmeraw";
+    openTab(tab);
+    if (leavingEatMeRaw) setPendingScrollRestore(0);
   };
+
+  const swipeToAdjacentNavigationTab = (offset: -1 | 1) => {
+    const currentIndex = PRIMARY_NAV_TABS.findIndex((tab) => tab === activeTabRef.current);
+    if (currentIndex < 0) return;
+
+    const nextTab = PRIMARY_NAV_TABS[currentIndex + offset];
+    if (!nextTab) return;
+
+    navigateToTab(nextTab);
+    if (nextTab !== "dashboard") {
+      window.scrollTo({ top: 0, behavior: "auto" });
+    }
+  };
+
+  const swipeNavigationHandlers = useSwipeNavigation({
+    enabled: PRIMARY_NAV_TABS.some((tab) => tab === activeTab),
+    onSwipeLeft: () => swipeToAdjacentNavigationTab(1),
+    onSwipeRight: () => swipeToAdjacentNavigationTab(-1),
+  });
 
   useEffect(() => {
     if (pendingScrollRestore === null) return;
@@ -56,6 +129,38 @@ function MainApp() {
     });
     return () => window.cancelAnimationFrame(frame);
   }, [activeTab, pendingScrollRestore]);
+
+  useEffect(() => {
+    window.history.replaceState(
+      { ...window.history.state, nutrimetricTab: "dashboard" },
+      "",
+      window.location.href,
+    );
+
+    const handleBrowserBack = () => {
+      if (shouldSkipPageBackForOverlay()) return;
+
+      if (activeTabRef.current === "eatmeraw") {
+        rawScrollPosition.current = window.scrollY;
+      }
+
+      activeTabRef.current = "dashboard";
+      hasDashboardHistoryEntry.current = false;
+      setActiveTab("dashboard");
+      setPendingScrollRestore(dashboardScrollPosition.current);
+
+      if (window.history.state?.nutrimetricTab !== "dashboard") {
+        window.history.replaceState(
+          { ...window.history.state, nutrimetricTab: "dashboard" },
+          "",
+          window.location.href,
+        );
+      }
+    };
+
+    window.addEventListener("popstate", handleBrowserBack);
+    return () => window.removeEventListener("popstate", handleBrowserBack);
+  }, []);
 
   useEffect(() => {
     localStorage.removeItem("nutrimetric_openai_settings_v1");
@@ -73,7 +178,10 @@ function MainApp() {
       />
 
       {/* Main Content Area */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+      <main
+        {...swipeNavigationHandlers}
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6"
+      >
         {activeTab === "dashboard" && (
           <DashboardView
             onNavigateToFoodLog={openFoodLogForm}
@@ -97,7 +205,7 @@ function MainApp() {
           <FoodLibraryView
             onLogFood={(food) => {
               setFoodLogDraft(food);
-              setActiveTab("foodlog");
+              openTab("foodlog");
               window.scrollTo({ top: 0, behavior: "smooth" });
             }}
           />
