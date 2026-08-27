@@ -22,7 +22,7 @@ import { FOOD_CATEGORIES } from "../constants/foodOptions";
 import { formatDateForDisplay } from "../utils/nutritionCalculator";
 import { sortDailyLogs } from "../utils/logSorting";
 import { createDefaultEatMePlan } from "../data/defaultEatMePlan";
-import { EatMeFoodMapping, EatMeManualCheckIn, EatMePlan, EatMeRawTick } from "../types/eatMe";
+import { EatMeFoodMapping, EatMePlan, EatMeRawTick } from "../types/eatMe";
 import { getLatestWeightGoalRevisionDate, resolveTargetsForDate, upsertTargetRevision } from "../utils/targetHistory";
 
 interface TrackerContextType {
@@ -60,12 +60,8 @@ interface TrackerContextType {
   deleteFoodCategory: (name: string) => void;
   eatMePlan: EatMePlan;
   eatMeMappings: EatMeFoodMapping[];
-  eatMeManualCheckIns: EatMeManualCheckIn[];
   replaceEatMePlan: (plan: EatMePlan) => boolean;
   resetEatMePlan: () => boolean;
-  saveEatMeMapping: (mapping: EatMeFoodMapping) => void;
-  removeEatMeMapping: (normalizedFoodName: string) => void;
-  setEatMeManualCheckIn: (checkIn: EatMeManualCheckIn) => void;
   eatMeRawTicks: EatMeRawTick[];
   toggleEatMeRawTick: (month: string, itemId: string, week: number) => void;
 }
@@ -83,7 +79,6 @@ const STORAGE_KEYS = {
   FOOD_CATEGORIES: "health_tracker_food_categories_v1",
   EAT_ME_PLAN: "health_tracker_eat_me_plan_v1",
   EAT_ME_MAPPINGS: "health_tracker_eat_me_mappings_v1",
-  EAT_ME_CHECK_INS: "health_tracker_eat_me_check_ins_v1",
   EAT_ME_RAW_TICKS: "health_tracker_eat_me_raw_ticks_v1",
   TARGET_HISTORY: "health_tracker_target_history_v1",
 };
@@ -179,7 +174,6 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [foodCategories, setFoodCategories] = useState<string[]>(loadFoodCategories);
   const [eatMePlan, setEatMePlan] = useState<EatMePlan>(() => loadJson(STORAGE_KEYS.EAT_ME_PLAN, createDefaultEatMePlan()));
   const [eatMeMappings, setEatMeMappings] = useState<EatMeFoodMapping[]>(() => loadJson(STORAGE_KEYS.EAT_ME_MAPPINGS, []));
-  const [eatMeManualCheckIns, setEatMeManualCheckIns] = useState<EatMeManualCheckIn[]>(() => loadJson(STORAGE_KEYS.EAT_ME_CHECK_INS, []));
   const [eatMeRawTicks, setEatMeRawTicks] = useState<EatMeRawTick[]>(() => loadJson(STORAGE_KEYS.EAT_ME_RAW_TICKS, []));
 
   useEffect(() => {
@@ -225,10 +219,6 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.EAT_ME_MAPPINGS, JSON.stringify(eatMeMappings));
   }, [eatMeMappings]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.EAT_ME_CHECK_INS, JSON.stringify(eatMeManualCheckIns));
-  }, [eatMeManualCheckIns]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.EAT_ME_RAW_TICKS, JSON.stringify(eatMeRawTicks));
@@ -417,24 +407,6 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return true;
   };
 
-  const saveEatMeMapping = (mapping: EatMeFoodMapping) => {
-    setEatMeMappings((previous) => [
-      ...previous.filter((item) => item.normalizedFoodName !== mapping.normalizedFoodName),
-      mapping,
-    ]);
-  };
-
-  const removeEatMeMapping = (normalizedFoodName: string) => {
-    setEatMeMappings((previous) => previous.filter((item) => item.normalizedFoodName !== normalizedFoodName));
-  };
-
-  const setEatMeManualCheckIn = (checkIn: EatMeManualCheckIn) => {
-    setEatMeManualCheckIns((previous) => [
-      ...previous.filter((item) => !(item.date === checkIn.date && item.goalId === checkIn.goalId)),
-      checkIn,
-    ]);
-  };
-
   const toggleEatMeRawTick = (month: string, itemId: string, week: number) => {
     if (week < 1 || week > 5) return;
     setEatMeRawTicks((previous) => {
@@ -486,12 +458,8 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
         deleteFoodCategory,
         eatMePlan,
         eatMeMappings,
-        eatMeManualCheckIns,
         replaceEatMePlan,
         resetEatMePlan,
-        saveEatMeMapping,
-        removeEatMeMapping,
-        setEatMeManualCheckIn,
         eatMeRawTicks,
         toggleEatMeRawTick,
       }}

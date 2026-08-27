@@ -2,26 +2,23 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createDefaultEatMePlan } from "../src/data/defaultEatMePlan";
 import {
-  analyzeEatMeMonth,
   deriveAutomaticEatMeRawTicks,
-  matchEatMeFood,
-  matchEatMeFoodAndIngredients,
-} from "../src/utils/eatMeAnalysis";
+  matchEatMeRawFood,
+  matchEatMeRawFoodAndIngredients,
+} from "../src/utils/eatMeRawMatching";
 import { exportEatMePlan, parseEatMeChecklistText, parseEatMePlanJson } from "../src/utils/eatMePlan";
 import { DailyLogEntry } from "../src/types";
 
 const plan = createDefaultEatMePlan();
-const vendakkai = matchEatMeFood("Vendakkai thokku", "Vegetable", plan, []);
+const vendakkai = matchEatMeRawFood("Vendakkai thokku", plan, []);
 assert.ok(vendakkai.itemIds.some((id) => id.includes("vendakkai")), "Vendakkai thokku must match the vendakkai checklist item.");
 assert.equal(vendakkai.confidence, "exact-alias");
 
-const sambar = matchEatMeFood("Homemade sambar", "Dal/Curry", plan, []);
+const sambar = matchEatMeRawFood("Homemade sambar", plan, []);
 assert.equal(sambar.itemIds.length, 0, "Generic sambar must not claim a specific ingredient.");
-assert.ok(sambar.groups.includes("legume"), "The explicit Dal/Curry category may support broad group analysis.");
 
-const ingredientMatchedSambar = matchEatMeFoodAndIngredients(
+const ingredientMatchedSambar = matchEatMeRawFoodAndIngredients(
   "Homemade sambar",
-  "Dal/Curry",
   ["Vendakkai"],
   plan,
   [],
@@ -29,10 +26,6 @@ const ingredientMatchedSambar = matchEatMeFoodAndIngredients(
 assert.ok(
   ingredientMatchedSambar.itemIds.some((id) => id.includes("vendakkai")),
   "An explicitly recorded primary ingredient must match its checklist food.",
-);
-assert.ok(
-  ingredientMatchedSambar.ingredientItemIds.some((id) => id.includes("vendakkai")),
-  "Ingredient-derived matches must remain distinguishable from direct dish matches.",
 );
 
 const baseLog = (overrides: Partial<DailyLogEntry>): DailyLogEntry => ({
@@ -58,17 +51,15 @@ const logs = [
   baseLog({ id: "w2", date: "2026-08-08" }),
   baseLog({ id: "sambar", date: "2026-08-08", foodItem: "Homemade sambar", category: "Dal/Curry" }),
 ];
-const analysis = analyzeEatMeMonth({
+const weeklyTicks = deriveAutomaticEatMeRawTicks({
   month: "2026-08",
-  today: "2026-08-18",
   plan,
   logs,
   foodLibrary: [],
   mappings: [],
-  manualCheckIns: [],
 });
-assert.ok(analysis.weeklyCoverage[0].covered >= 1 && analysis.weeklyCoverage[1].covered >= 1, "W1 and W2 must be separate fixed month blocks.");
-assert.ok(analysis.reviewFoods.some((food) => food.normalizedFoodName.includes("sambar")), "Unmatched sambar must be sent to review.");
+const vendakkaiTick = weeklyTicks.find((tick) => tick.itemId.includes("vendakkai"));
+assert.deepEqual(vendakkaiTick?.weeks, [1, 2], "Days 7 and 8 must produce separate W1 and W2 checks.");
 
 const automaticTicks = deriveAutomaticEatMeRawTicks({
   month: "2026-08",
@@ -103,7 +94,7 @@ assert.ok(
   "Legacy logs must use the matching Food Library recipe when they have no ingredient snapshot.",
 );
 
-const sambarMapped = matchEatMeFood("Homemade sambar", "Dal/Curry", plan, [{
+const sambarMapped = matchEatMeRawFood("Homemade sambar", plan, [{
   normalizedFoodName: "homemade sambar",
   checklistItemIds: [plan.sections.find((section) => section.id === "legumes")!.foods[0].id],
   ignored: false,

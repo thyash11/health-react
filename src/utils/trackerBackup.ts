@@ -9,7 +9,6 @@ export const TRACKER_STORAGE_KEYS = {
   foodCategories: "health_tracker_food_categories_v1",
   eatMePlan: "health_tracker_eat_me_plan_v1",
   eatMeMappings: "health_tracker_eat_me_mappings_v1",
-  eatMeManualCheckIns: "health_tracker_eat_me_check_ins_v1",
   eatMeRawTicks: "health_tracker_eat_me_raw_ticks_v1",
   targetHistory: "health_tracker_target_history_v1",
 } as const;
@@ -81,7 +80,7 @@ export function importTrackerBackup(contents: string) {
   }
 
   const data = (backup as TrackerBackup).data;
-  const optionalFields = new Set(["foodCategories", "eatMePlan", "eatMeMappings", "eatMeManualCheckIns", "eatMeRawTicks", "targetHistory"]);
+  const optionalFields = new Set(["foodCategories", "eatMePlan", "eatMeMappings", "eatMeRawTicks", "targetHistory"]);
   const missingFields = Object.keys(TRACKER_STORAGE_KEYS).filter(
     (name) => !optionalFields.has(name)
   ).filter(
@@ -112,4 +111,5 @@ export function deleteAllTrackerData() {
   Object.values(TRACKER_STORAGE_KEYS).forEach((storageKey) => {
     localStorage.removeItem(storageKey);
   });
+  localStorage.removeItem("health_tracker_eat_me_check_ins_v1");
 }
