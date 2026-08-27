@@ -97,6 +97,7 @@ export interface EatMeMatchedLog {
   quantityGrams: number;
   groupMatches: EatMeFoodGroup[];
   itemIds: string[];
+  ingredientItemIds?: string[];
   confidence: "manual" | "exact-alias" | "category-only" | "unmatched";
 }
 

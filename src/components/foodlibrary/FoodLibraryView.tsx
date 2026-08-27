@@ -16,6 +16,7 @@ import {
 import { useTracker } from "../../context/TrackerContext";
 import { FoodItem, FoodCategory } from "../../types";
 import { formatDateForDisplay } from "../../utils/nutritionCalculator";
+import { cleanPrimaryIngredients, parsePrimaryIngredients } from "../../utils/primaryIngredients";
 
 interface FoodLibraryViewProps {
   onLogFood: (food: FoodItem) => void;
@@ -37,6 +38,7 @@ export const FoodLibraryView: React.FC<FoodLibraryViewProps> = ({ onLogFood }) =
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingFoodId, setEditingFoodId] = useState<string | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
   const [importMessage, setImportMessage] = useState<{ type: "success" | "error"; text: string }>();
 
@@ -49,6 +51,7 @@ export const FoodLibraryView: React.FC<FoodLibraryViewProps> = ({ onLogFood }) =
   const [c100, setC100] = useState<NumericDraft>("");
   const [f100, setF100] = useState<NumericDraft>("");
   const [fib100, setFib100] = useState<NumericDraft>("");
+  const [primaryIngredientsText, setPrimaryIngredientsText] = useState("");
 
   const numericDraft = (value: string): NumericDraft => value === "" ? "" : Number(value);
 
@@ -62,6 +65,7 @@ export const FoodLibraryView: React.FC<FoodLibraryViewProps> = ({ onLogFood }) =
         {
           name: "Example food",
           category: foodCategories[0] || "Other",
+          primaryIngredients: ["Primary ingredient", "Another main ingredient"],
           defaultServingGrams: 100,
           caloriesPer100g: 100,
           proteinPer100g: 5,
@@ -114,10 +118,21 @@ export const FoodLibraryView: React.FC<FoodLibraryViewProps> = ({ onLogFood }) =
         if (typeof value.category !== "string" || !foodCategories.includes(value.category)) {
           throw new Error(`Food ${row}: category must be one of ${foodCategories.join(", ")}.`);
         }
+        const rawPrimaryIngredients = value.primaryIngredients;
+        if (rawPrimaryIngredients !== undefined && !Array.isArray(rawPrimaryIngredients)) {
+          throw new Error(`Food ${row}: primaryIngredients must be an array of ingredient names.`);
+        }
+        const primaryIngredients = cleanPrimaryIngredients(
+          (Array.isArray(rawPrimaryIngredients) ? rawPrimaryIngredients : []).map((ingredient) => {
+            if (typeof ingredient !== "string") throw new Error(`Food ${row}: every primary ingredient must be text.`);
+            return ingredient;
+          }),
+        );
 
         return {
           name: foodName,
           category: value.category,
+          primaryIngredients,
           defaultServingGrams: numberField(value.defaultServingGrams, "defaultServingGrams", row, true),
           caloriesPer100g: numberField(value.caloriesPer100g, "caloriesPer100g", row),
           proteinPer100g: numberField(value.proteinPer100g, "proteinPer100g", row),
@@ -135,31 +150,71 @@ export const FoodLibraryView: React.FC<FoodLibraryViewProps> = ({ onLogFood }) =
     }
   };
 
-  const handleCreateFood = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim() || serving === "" || serving <= 0) return;
-
-    const added = addFoodItem({
-      name,
-      category,
-      defaultServingGrams: Number(serving),
-      caloriesPer100g: Number(cal100),
-      proteinPer100g: Number(p100),
-      carbsPer100g: Number(c100),
-      fatPer100g: Number(f100),
-      fiberPer100g: Number(fib100),
-      isFavorite: false,
-    });
-    if (!added) return;
-
+  const resetFoodEditor = () => {
+    setEditingFoodId(null);
     setName("");
+    setCategory(foodCategories[0] || "Breakfast");
     setServing("");
     setCal100("");
     setP100("");
     setC100("");
     setF100("");
     setFib100("");
+    setPrimaryIngredientsText("");
+  };
+
+  const closeFoodEditor = () => {
     setShowAddModal(false);
+    resetFoodEditor();
+  };
+
+  const openNewFoodEditor = () => {
+    resetFoodEditor();
+    setShowAddModal(true);
+  };
+
+  const openFoodEditor = (item: FoodItem) => {
+    setEditingFoodId(item.id);
+    setName(item.name);
+    setCategory(item.category);
+    setServing(item.defaultServingGrams);
+    setCal100(item.caloriesPer100g);
+    setP100(item.proteinPer100g);
+    setC100(item.carbsPer100g);
+    setF100(item.fatPer100g);
+    setFib100(item.fiberPer100g);
+    setPrimaryIngredientsText((item.primaryIngredients || []).join(", "));
+    setShowAddModal(true);
+  };
+
+  const handleSaveFood = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || serving === "" || serving <= 0) return;
+
+    const foodDraft: Omit<FoodItem, "id"> = {
+      name: name.trim(),
+      category,
+      primaryIngredients: parsePrimaryIngredients(primaryIngredientsText),
+      defaultServingGrams: Number(serving),
+      caloriesPer100g: Number(cal100),
+      proteinPer100g: Number(p100),
+      carbsPer100g: Number(c100),
+      fatPer100g: Number(f100),
+      fiberPer100g: Number(fib100),
+      isFavorite: editingFoodId
+        ? foodLibrary.find((item) => item.id === editingFoodId)?.isFavorite
+        : false,
+    };
+
+    if (editingFoodId) {
+      updateFoodItem(editingFoodId, foodDraft);
+      closeFoodEditor();
+      return;
+    }
+
+    const added = addFoodItem(foodDraft);
+    if (!added) return;
+    closeFoodEditor();
   };
 
   const quickLogFood = (item: FoodItem) => {
@@ -169,7 +224,8 @@ export const FoodLibraryView: React.FC<FoodLibraryViewProps> = ({ onLogFood }) =
   const filteredItems = foodLibrary.filter((item) => {
     const searchMatch =
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.category.toLowerCase().includes(searchQuery.toLowerCase());
+      item.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.primaryIngredients || []).some((ingredient) => ingredient.toLowerCase().includes(searchQuery.toLowerCase()));
     const catMatch = selectedCategory === "All" || item.category === selectedCategory;
     return searchMatch && catMatch;
   });
@@ -214,7 +270,7 @@ export const FoodLibraryView: React.FC<FoodLibraryViewProps> = ({ onLogFood }) =
               className="hidden"
             />
             <button
-              onClick={() => setShowAddModal(true)}
+              onClick={openNewFoodEditor}
               className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-blue-700 sm:px-4"
             >
               <Plus className="w-4 h-4" />
@@ -235,14 +291,14 @@ export const FoodLibraryView: React.FC<FoodLibraryViewProps> = ({ onLogFood }) =
       {showAddModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/45 p-3 backdrop-blur-xs sm:p-4">
           <form
-            onSubmit={handleCreateFood}
+            onSubmit={handleSaveFood}
             className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-blue-200 bg-white p-4 text-xs shadow-2xl space-y-4 sm:p-5"
           >
           <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-            <h3 className="font-bold text-slate-900 text-sm">Add New Item to Food Library</h3>
+            <h3 className="font-bold text-slate-900 text-sm">{editingFoodId ? "Edit Food Library Item" : "Add New Item to Food Library"}</h3>
             <button
               type="button"
-              onClick={() => setShowAddModal(false)}
+              onClick={closeFoodEditor}
               className="text-slate-400 hover:text-slate-600"
             >
               <X className="w-4 h-4" />
@@ -341,12 +397,24 @@ export const FoodLibraryView: React.FC<FoodLibraryViewProps> = ({ onLogFood }) =
               />
             </div>
 
+            <div className="col-span-2 sm:col-span-4">
+              <label className="text-slate-500 block mb-1">Primary ingredients</label>
+              <input
+                type="text"
+                value={primaryIngredientsText}
+                onChange={(event) => setPrimaryIngredientsText(event.target.value)}
+                placeholder="e.g. Vendakkai, toor dal, tomato"
+                className="w-full rounded-xl border border-emerald-200 bg-emerald-50/40 p-2.5 text-slate-900"
+              />
+              <p className="mt-1 text-[10px] text-slate-500">Comma-separated main ingredients only. These drive Eat Me Intelligence and automatic Raw checks.</p>
+            </div>
+
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"
-              onClick={() => setShowAddModal(false)}
+              onClick={closeFoodEditor}
               className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 font-medium"
             >
               Cancel
@@ -355,7 +423,7 @@ export const FoodLibraryView: React.FC<FoodLibraryViewProps> = ({ onLogFood }) =
               type="submit"
               className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs"
             >
-              Save to Library
+              {editingFoodId ? "Update Library Item" : "Save to Library"}
             </button>
           </div>
           </form>
@@ -447,17 +515,31 @@ export const FoodLibraryView: React.FC<FoodLibraryViewProps> = ({ onLogFood }) =
                 <p className="text-[10px] text-slate-400">
                   Per 100g: {item.caloriesPer100g} kcal | {item.proteinPer100g}g P | {item.carbsPer100g}g C | {item.fatPer100g}g F | {item.fiberPer100g}g Fib
                 </p>
+                {(item.primaryIngredients?.length ?? 0) > 0 && (
+                  <p className="rounded-lg border border-emerald-100 bg-emerald-50/60 px-2.5 py-2 text-[10px] leading-4 text-emerald-800">
+                    <span className="font-bold">Primary ingredients:</span> {item.primaryIngredients!.join(", ")}
+                  </p>
+                )}
               </div>
 
               {/* Actions */}
               <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                <button
-                  onClick={() => deleteFoodItem(item.id)}
-                  className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors rounded-lg hover:bg-slate-100"
-                  title="Delete Item"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => openFoodEditor(item)}
+                    className="p-1.5 text-slate-400 hover:text-blue-600 transition-colors rounded-lg hover:bg-slate-100"
+                    title="Edit Item"
+                  >
+                    <Edit className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => deleteFoodItem(item.id)}
+                    className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors rounded-lg hover:bg-slate-100"
+                    title="Delete Item"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
 
                 <button
                   onClick={() => quickLogFood(item)}

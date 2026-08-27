@@ -248,6 +248,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       </div>
 
+      <button
+        type="button"
+        onClick={onNavigateToFoodLog}
+        aria-label="Add food now"
+        title="Add food now"
+        className="fixed bottom-5 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full border border-blue-500 bg-blue-600 text-white shadow-xl shadow-blue-950/20 transition hover:bg-blue-700 hover:shadow-2xl focus:outline-none focus:ring-4 focus:ring-blue-200 sm:bottom-6 sm:right-6"
+      >
+        <Utensils className="h-5 w-5" />
+        <span className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-emerald-500 text-sm font-black leading-none">+</span>
+      </button>
+
       {/* Full-width Daily Health Score */}
       <div className="w-full flex items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm">
         <div>

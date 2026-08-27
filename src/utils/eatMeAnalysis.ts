@@ -135,6 +135,50 @@ export const matchEatMeFood = (
   };
 };
 
+export const matchEatMeFoodAndIngredients = (
+  foodName: string,
+  category: string,
+  primaryIngredients: string[] | undefined,
+  plan: EatMePlan,
+  mappings: EatMeFoodMapping[],
+) => {
+  const directMatch = matchEatMeFood(foodName, category, plan, mappings);
+  const ingredientMatches = (primaryIngredients || []).map((ingredient) =>
+    matchEatMeFood(ingredient, "", plan, mappings)
+  );
+  const confidentIngredientMatches = ingredientMatches.filter((match) =>
+    match.confidence === "manual" || match.confidence === "exact-alias"
+  );
+  const itemIds = unique([
+    ...directMatch.itemIds,
+    ...confidentIngredientMatches.flatMap((match) => match.itemIds),
+  ]);
+  const ingredientItemIds = unique(
+    confidentIngredientMatches
+      .flatMap((match) => match.itemIds)
+      .filter((id) => !directMatch.itemIds.includes(id)),
+  );
+  const groups = unique([
+    ...directMatch.groups,
+    ...confidentIngredientMatches.flatMap((match) => match.groups),
+  ]);
+  const hasManualMatch = directMatch.confidence === "manual"
+    || confidentIngredientMatches.some((match) => match.confidence === "manual");
+  const confidence = hasManualMatch
+    ? "manual" as const
+    : itemIds.length > 0
+      ? "exact-alias" as const
+      : directMatch.confidence;
+
+  return {
+    itemIds,
+    ingredientItemIds,
+    groups,
+    confidence,
+    candidates: directMatch.candidates,
+  };
+};
+
 const monthParts = (month: string) => {
   const [year, monthNumber] = month.split("-").map(Number);
   const daysInMonth = new Date(year, monthNumber, 0).getDate();
@@ -148,8 +192,46 @@ const getElapsedDays = (month: string, today: string, daysInMonth: number) => {
   return Math.min(daysInMonth, Number(today.slice(8, 10)));
 };
 
-const weekIndexForDate = (date: string) => Math.min(5, Math.ceil(Number(date.slice(8, 10)) / 7));
+export const weekIndexForDate = (date: string) => Math.min(5, Math.ceil(Number(date.slice(8, 10)) / 7));
 const unique = <T,>(values: T[]) => [...new Set(values)];
+const ingredientsForLog = (log: DailyLogEntry, foodLibrary: FoodItem[]) =>
+  log.primaryIngredients ?? foodLibrary.find((food) =>
+    normalizeEatMeText(food.name) === normalizeEatMeText(log.foodItem)
+  )?.primaryIngredients;
+
+export const deriveAutomaticEatMeRawTicks = ({
+  month,
+  logs,
+  plan,
+  mappings,
+  foodLibrary = [],
+}: {
+  month: string;
+  logs: DailyLogEntry[];
+  plan: EatMePlan;
+  mappings: EatMeFoodMapping[];
+  foodLibrary?: FoodItem[];
+}) => {
+  const weeksByItem = new Map<string, Set<number>>();
+  logs.filter((log) => log.date.startsWith(`${month}-`)).forEach((log) => {
+    const match = matchEatMeFoodAndIngredients(
+      log.foodItem,
+      log.category,
+      ingredientsForLog(log, foodLibrary),
+      plan,
+      mappings,
+    );
+    match.itemIds.forEach((itemId) => {
+      if (!weeksByItem.has(itemId)) weeksByItem.set(itemId, new Set());
+      weeksByItem.get(itemId)!.add(weekIndexForDate(log.date));
+    });
+  });
+  return [...weeksByItem].map(([itemId, weeks]) => ({
+    month,
+    itemId,
+    weeks: [...weeks].sort((a, b) => a - b),
+  }));
+};
 
 const isProtein = (groups: EatMeFoodGroup[]) => groups.some((group) => ["naturalProtein", "legume", "dairyCalcium", "nutsSeeds"].includes(group));
 const isSugaryDrink = (log: DailyLogEntry) => log.category === "Sugary Drink" || /\b(soft drink|energy drink|sweetened|sugarcane juice|packaged juice|malt drink)\b/i.test(`${log.foodItem} ${log.notes || ""}`);
@@ -219,7 +301,7 @@ export const analyzeEatMeMonth = ({
   const foodsById = new Map(allFoods.map((food) => [food.id, food]));
 
   const matchedLogs: EatMeMatchedLog[] = monthLogs.map((log) => {
-    const match = matchEatMeFood(log.foodItem, log.category, plan, mappings);
+    const match = matchEatMeFoodAndIngredients(log.foodItem, log.category, ingredientsForLog(log, foodLibrary), plan, mappings);
     return {
       logId: log.id,
       foodName: log.foodItem,
@@ -228,6 +310,7 @@ export const analyzeEatMeMonth = ({
       quantityGrams: log.quantityGrams,
       groupMatches: match.groups,
       itemIds: match.itemIds,
+      ingredientItemIds: match.ingredientItemIds,
       confidence: match.confidence,
     };
   });
@@ -237,7 +320,7 @@ export const analyzeEatMeMonth = ({
     const matched = matchedLogs[index];
     if (matched.itemIds.length > 0 || mappings.some((mapping) => mapping.normalizedFoodName === normalizeEatMeText(log.foodItem) && mapping.ignored)) return;
     const normalizedFoodName = normalizeEatMeText(log.foodItem);
-    const match = matchEatMeFood(log.foodItem, log.category, plan, mappings);
+    const match = matchEatMeFoodAndIngredients(log.foodItem, log.category, ingredientsForLog(log, foodLibrary), plan, mappings);
     const existing = reviewMap.get(normalizedFoodName);
     if (existing) existing.occurrences += 1;
     else reviewMap.set(normalizedFoodName, { normalizedFoodName, displayName: log.foodItem, occurrences: 1, candidateItemIds: match.candidates });
@@ -257,11 +340,13 @@ export const analyzeEatMeMonth = ({
   const servingTotal = (group: EatMeFoodGroup) => groupEntries(group).reduce((total, entry) => {
     const exactItem = entry.itemIds.map((id) => foodsById.get(id)).find((food) => food?.group === group || (group === "vegetable" && food?.group === "leafy"));
     const serving = exactItem?.servingGrams || GROUP_SERVING_GRAMS[group];
+    if (exactItem && entry.ingredientItemIds?.includes(exactItem.id)) return total + 1;
     return total + (exactItem && serving && entry.quantityGrams > 0 ? entry.quantityGrams / serving : 1);
   }, 0);
   const groupEstimated = (group: EatMeFoodGroup) => groupEntries(group).some((entry) => !entry.itemIds.some((id) => {
     const food = foodsById.get(id);
-    return food?.group === group || (group === "vegetable" && food?.group === "leafy");
+    return (food?.group === group || (group === "vegetable" && food?.group === "leafy"))
+      && !entry.ingredientItemIds?.includes(id);
   }));
 
   const veggieTwoMealDays = [...mealsByDate.entries()].filter(([, meals]) => [...meals.values()].filter((entries) => entries.some((entry) => entry.groupMatches.includes("vegetable"))).length >= 2).length;
@@ -336,7 +421,7 @@ export const analyzeEatMeMonth = ({
 
   const libraryRecommendations: EatMeRecommendation[] = [];
   foodLibrary.forEach((libraryFood) => {
-    const match = matchEatMeFood(libraryFood.name, libraryFood.category, plan, mappings);
+    const match = matchEatMeFoodAndIngredients(libraryFood.name, libraryFood.category, libraryFood.primaryIngredients, plan, mappings);
     const groupGap = frequencyDeficits.find((gap) => match.groups.includes(gap.group));
     const item = match.itemIds.map((id) => foodsById.get(id)).find((food) => food?.intent === "encourage");
     if (!groupGap || !item) return;
@@ -345,7 +430,7 @@ export const analyzeEatMeMonth = ({
   });
 
   const eatenIds = new Set(matchedLogs.flatMap((entry) => entry.itemIds));
-  const libraryItemIds = new Set(foodLibrary.flatMap((food) => matchEatMeFood(food.name, food.category, plan, mappings).itemIds));
+  const libraryItemIds = new Set(foodLibrary.flatMap((food) => matchEatMeFoodAndIngredients(food.name, food.category, food.primaryIngredients, plan, mappings).itemIds));
   const discoveryRecommendations = allFoods
     .filter((food) => food.intent === "encourage" && !eatenIds.has(food.id) && !libraryItemIds.has(food.id) && frequencyDeficits.some((gap) => gap.group === food.group || (gap.group === "vegetable" && food.group === "leafy")))
     .slice(0, 6)

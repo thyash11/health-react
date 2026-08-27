@@ -17,6 +17,14 @@ import { EatMeRawView } from "./components/eatme/EatMeRawView";
 function MainApp() {
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [foodLogDraft, setFoodLogDraft] = useState<FoodItem | null>(null);
+  const [openFoodLogRequest, setOpenFoodLogRequest] = useState<number | null>(null);
+
+  const openFoodLogForm = () => {
+    setFoodLogDraft(null);
+    setOpenFoodLogRequest(Date.now());
+    setActiveTab("foodlog");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   useEffect(() => {
     localStorage.removeItem("nutrimetric_openai_settings_v1");
@@ -37,7 +45,7 @@ function MainApp() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
         {activeTab === "dashboard" && (
           <DashboardView
-            onNavigateToFoodLog={() => setActiveTab("foodlog")}
+            onNavigateToFoodLog={openFoodLogForm}
             onNavigateToEatMe={() => {
               setActiveTab("eatme");
               window.scrollTo({ top: 0, behavior: "smooth" });
@@ -53,6 +61,8 @@ function MainApp() {
           <DailyFoodLogView
             prefillFood={foodLogDraft}
             onPrefillConsumed={() => setFoodLogDraft(null)}
+            openAddRequest={openFoodLogRequest}
+            onOpenAddConsumed={() => setOpenFoodLogRequest(null)}
           />
         )}
 

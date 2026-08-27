@@ -9,6 +9,7 @@ import {
   X,
 } from "lucide-react";
 import { useTracker } from "../../context/TrackerContext";
+import { deriveAutomaticEatMeRawTicks } from "../../utils/eatMeAnalysis";
 
 interface EatMeRawViewProps {
   onBack: () => void;
@@ -26,7 +27,10 @@ export const EatMeRawView: React.FC<EatMeRawViewProps> = ({ onBack }) => {
   const {
     selectedDate,
     eatMePlan,
+    eatMeMappings,
     eatMeRawTicks,
+    dailyLogs,
+    foodLibrary,
     toggleEatMeRawTick,
   } = useTracker();
   const [month, setMonth] = useState(selectedDate.slice(0, 7));
@@ -41,13 +45,37 @@ export const EatMeRawView: React.FC<EatMeRawViewProps> = ({ onBack }) => {
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [showSections]);
 
-  const ticksForMonth = useMemo(
+  const manualTicksForMonth = useMemo(
     () => new Map(
       eatMeRawTicks
         .filter((tick) => tick.month === month)
         .map((tick) => [tick.itemId, new Set(tick.weeks)]),
     ),
     [eatMeRawTicks, month],
+  );
+  const automaticTicksForMonth = useMemo(
+    () => new Map(
+      deriveAutomaticEatMeRawTicks({
+        month,
+        logs: dailyLogs,
+        plan: eatMePlan,
+        mappings: eatMeMappings,
+        foodLibrary,
+      }).map((tick) => [tick.itemId, new Set(tick.weeks)]),
+    ),
+    [dailyLogs, eatMeMappings, eatMePlan, foodLibrary, month],
+  );
+  const ticksForMonth = useMemo(() => {
+    const combined = new Map<string, Set<number>>();
+    [...manualTicksForMonth, ...automaticTicksForMonth].forEach(([itemId, weeks]) => {
+      if (!combined.has(itemId)) combined.set(itemId, new Set());
+      weeks.forEach((week) => combined.get(itemId)!.add(week));
+    });
+    return combined;
+  }, [automaticTicksForMonth, manualTicksForMonth]);
+  const automaticCheckedBoxes = useMemo(
+    () => [...automaticTicksForMonth.values()].reduce((total, weeks) => total + weeks.size, 0),
+    [automaticTicksForMonth],
   );
 
   const totalFoods = useMemo(
@@ -106,7 +134,7 @@ export const EatMeRawView: React.FC<EatMeRawViewProps> = ({ onBack }) => {
             </div>
             <h1 className="text-2xl font-black text-slate-950 sm:text-3xl">Eat Me Raw</h1>
             <p className="mt-1 max-w-xl text-sm text-slate-600">
-              Tick a food once when you eat it during W1–W5. Each month keeps its own checklist.
+              Food logs auto-check confident dish and primary-ingredient matches. You can still tick anything else manually.
             </p>
           </div>
 
@@ -157,9 +185,12 @@ export const EatMeRawView: React.FC<EatMeRawViewProps> = ({ onBack }) => {
         <div className="border-b border-slate-200 px-4 py-4 font-mono text-xs leading-5 text-slate-600 sm:px-6 sm:text-sm">
           <p className="font-bold text-slate-800">HOW TO USE</p>
           <p>1. A box means: I ate this food at least once during that week.</p>
-          <p>2. Tick only one box per week for each food, even if you ate it many times.</p>
-          <p>3. Rotate suitable seasonal, affordable and locally available foods.</p>
+          <p>2. Blue AUTO boxes come from Food Log and follow changes to those logs.</p>
+          <p>3. Tick unchecked boxes manually; each month keeps its own manual checks.</p>
+          <p>4. Only explicit primary ingredients are used—the app never guesses a cooked recipe.</p>
+          <p>5. Rotate suitable seasonal, affordable and locally available foods.</p>
           <p className="mt-3 font-semibold text-slate-800">WEEKLY BOX KEY: [ ] W1&nbsp;&nbsp; [ ] W2&nbsp;&nbsp; [ ] W3&nbsp;&nbsp; [ ] W4&nbsp;&nbsp; [ ] W5</p>
+          <p className="mt-1 font-semibold text-blue-700">AUTO FROM FOOD LOG: {automaticCheckedBoxes} weekly check{automaticCheckedBoxes === 1 ? "" : "s"}</p>
         </div>
 
         <div className="grid grid-cols-3 divide-x divide-slate-200 border-b border-slate-200 bg-white font-mono text-center">
@@ -200,19 +231,22 @@ export const EatMeRawView: React.FC<EatMeRawViewProps> = ({ onBack }) => {
                     <div className="grid grid-cols-5 border-t border-slate-100 bg-slate-50/80">
                       {[1, 2, 3, 4, 5].map((week) => {
                         const checked = ticksForMonth.get(food.id)?.has(week) ?? false;
+                        const automatic = automaticTicksForMonth.get(food.id)?.has(week) ?? false;
                         return (
                           <label
                             key={week}
-                            className="flex min-h-12 cursor-pointer flex-col items-center justify-center gap-1 border-r border-slate-200 py-1.5 font-mono text-[10px] font-bold text-slate-500 last:border-r-0"
+                            className={`flex min-h-12 flex-col items-center justify-center gap-1 border-r border-slate-200 py-1.5 font-mono text-[10px] font-bold last:border-r-0 ${automatic ? "cursor-default bg-blue-50 text-blue-700" : "cursor-pointer text-slate-500"}`}
                           >
                             W{week}
                             <input
                               type="checkbox"
                               checked={checked}
+                              disabled={automatic}
                               onChange={() => toggleEatMeRawTick(month, food.id, week)}
-                              aria-label={`${food.name}, week ${week}, ${formatMonth(month)}`}
-                              className="h-4 w-4 cursor-pointer accent-emerald-600"
+                              aria-label={`${food.name}, week ${week}, ${formatMonth(month)}${automatic ? ", automatically checked from food log" : ""}`}
+                              className={`h-4 w-4 accent-emerald-600 ${automatic ? "cursor-default accent-blue-600" : "cursor-pointer"}`}
                             />
+                            {automatic && <span className="text-[8px] font-black tracking-wide">AUTO</span>}
                           </label>
                         );
                       })}
@@ -246,16 +280,19 @@ export const EatMeRawView: React.FC<EatMeRawViewProps> = ({ onBack }) => {
                         </th>
                         {[1, 2, 3, 4, 5].map((week) => {
                           const checked = ticksForMonth.get(food.id)?.has(week) ?? false;
+                          const automatic = automaticTicksForMonth.get(food.id)?.has(week) ?? false;
                           return (
-                            <td key={week} className="px-2 py-2 text-center">
-                              <label className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-md hover:bg-emerald-100">
+                            <td key={week} className={`px-2 py-2 text-center ${automatic ? "bg-blue-50/70" : ""}`}>
+                              <label className={`inline-flex min-h-9 min-w-9 flex-col items-center justify-center rounded-md ${automatic ? "cursor-default text-blue-700" : "cursor-pointer hover:bg-emerald-100"}`}>
                                 <input
                                   type="checkbox"
                                   checked={checked}
+                                  disabled={automatic}
                                   onChange={() => toggleEatMeRawTick(month, food.id, week)}
-                                  aria-label={`${food.name}, week ${week}, ${formatMonth(month)}`}
-                                  className="h-4 w-4 cursor-pointer accent-emerald-600"
+                                  aria-label={`${food.name}, week ${week}, ${formatMonth(month)}${automatic ? ", automatically checked from food log" : ""}`}
+                                  className={`h-4 w-4 accent-emerald-600 ${automatic ? "cursor-default accent-blue-600" : "cursor-pointer"}`}
                                 />
+                                {automatic && <span className="mt-0.5 text-[7px] font-black tracking-wide">AUTO</span>}
                               </label>
                             </td>
                           );

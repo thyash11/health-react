@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createDefaultEatMePlan } from "../src/data/defaultEatMePlan";
-import { analyzeEatMeMonth, matchEatMeFood } from "../src/utils/eatMeAnalysis";
+import {
+  analyzeEatMeMonth,
+  deriveAutomaticEatMeRawTicks,
+  matchEatMeFood,
+  matchEatMeFoodAndIngredients,
+} from "../src/utils/eatMeAnalysis";
 import { exportEatMePlan, parseEatMeChecklistText, parseEatMePlanJson } from "../src/utils/eatMePlan";
 import { DailyLogEntry } from "../src/types";
 
@@ -13,6 +18,22 @@ assert.equal(vendakkai.confidence, "exact-alias");
 const sambar = matchEatMeFood("Homemade sambar", "Dal/Curry", plan, []);
 assert.equal(sambar.itemIds.length, 0, "Generic sambar must not claim a specific ingredient.");
 assert.ok(sambar.groups.includes("legume"), "The explicit Dal/Curry category may support broad group analysis.");
+
+const ingredientMatchedSambar = matchEatMeFoodAndIngredients(
+  "Homemade sambar",
+  "Dal/Curry",
+  ["Vendakkai"],
+  plan,
+  [],
+);
+assert.ok(
+  ingredientMatchedSambar.itemIds.some((id) => id.includes("vendakkai")),
+  "An explicitly recorded primary ingredient must match its checklist food.",
+);
+assert.ok(
+  ingredientMatchedSambar.ingredientItemIds.some((id) => id.includes("vendakkai")),
+  "Ingredient-derived matches must remain distinguishable from direct dish matches.",
+);
 
 const baseLog = (overrides: Partial<DailyLogEntry>): DailyLogEntry => ({
   id: "log",
@@ -48,6 +69,39 @@ const analysis = analyzeEatMeMonth({
 });
 assert.ok(analysis.weeklyCoverage[0].covered >= 1 && analysis.weeklyCoverage[1].covered >= 1, "W1 and W2 must be separate fixed month blocks.");
 assert.ok(analysis.reviewFoods.some((food) => food.normalizedFoodName.includes("sambar")), "Unmatched sambar must be sent to review.");
+
+const automaticTicks = deriveAutomaticEatMeRawTicks({
+  month: "2026-08",
+  logs: [baseLog({ id: "ingredient-sambar", date: "2026-08-08", foodItem: "Homemade sambar", category: "Dal/Curry", primaryIngredients: ["Vendakkai"] })],
+  plan,
+  mappings: [],
+});
+assert.ok(
+  automaticTicks.some((tick) => tick.itemId.includes("vendakkai") && tick.weeks.includes(2)),
+  "A primary ingredient eaten on day 8 must automatically tick W2.",
+);
+const legacyLogTicks = deriveAutomaticEatMeRawTicks({
+  month: "2026-08",
+  logs: [baseLog({ id: "legacy-sambar", date: "2026-08-15", foodItem: "Homemade sambar", category: "Dal/Curry" })],
+  plan,
+  mappings: [],
+  foodLibrary: [{
+    id: "sambar-library",
+    name: "Homemade sambar",
+    category: "Dal/Curry",
+    primaryIngredients: ["Vendakkai"],
+    defaultServingGrams: 200,
+    caloriesPer100g: 80,
+    proteinPer100g: 4,
+    carbsPer100g: 10,
+    fatPer100g: 2,
+    fiberPer100g: 3,
+  }],
+});
+assert.ok(
+  legacyLogTicks.some((tick) => tick.itemId.includes("vendakkai") && tick.weeks.includes(3)),
+  "Legacy logs must use the matching Food Library recipe when they have no ingredient snapshot.",
+);
 
 const sambarMapped = matchEatMeFood("Homemade sambar", "Dal/Curry", plan, [{
   normalizedFoodName: "homemade sambar",

@@ -7,6 +7,7 @@ export interface FoodItem {
   id: string;
   name: string;
   category: FoodCategory;
+  primaryIngredients?: string[];
   defaultServingGrams: number;
   caloriesPer100g: number;
   proteinPer100g: number;
@@ -24,6 +25,7 @@ export interface DailyLogEntry {
   time: string; // e.g., "10:30 AM"
   foodItem: string;
   category: FoodCategory;
+  primaryIngredients?: string[];
   quantityGrams: number; // g or ml
   calories: number;
   protein: number;
