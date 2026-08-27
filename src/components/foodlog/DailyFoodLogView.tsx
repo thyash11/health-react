@@ -694,11 +694,6 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({
                   <tr key={log.id} className="group hover:bg-slate-50/80 transition-colors">
                     <td style={{ width: "min(35vw, 15rem)" }} className="sticky left-0 z-20 break-words bg-white p-2 sm:p-3 font-medium text-slate-900 transition-colors group-hover:bg-slate-50">
                       <span className="block">{log.foodItem}</span>
-                      {(log.primaryIngredients?.length ?? 0) > 0 && (
-                        <span className="mt-1 block text-[10px] font-normal leading-4 text-emerald-700">
-                          {log.primaryIngredients!.join(", ")}
-                        </span>
-                      )}
                     </td>
                     <td className="p-3 font-semibold text-slate-900">{log.meal}</td>
                     <td className="p-3 text-slate-400 text-[11px] whitespace-nowrap">{log.time || "—"}</td>
