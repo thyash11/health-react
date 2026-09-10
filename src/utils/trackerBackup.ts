@@ -1,3 +1,10 @@
+import {
+  getTrackerStorageBackend,
+  migrateStorageToIndexedDb,
+  readStorageValues,
+  writeStorageValues,
+} from "./browserStorage";
+
 export const TRACKER_STORAGE_KEYS = {
   selectedDate: "health_tracker_selected_date_v1",
   targets: "health_tracker_targets_v1",
@@ -24,10 +31,11 @@ interface TrackerBackup {
   data: BackupData;
 }
 
-export function createTrackerBackup(): TrackerBackup {
+export async function createTrackerBackup(): Promise<TrackerBackup> {
+  const storedValues = await readStorageValues(Object.values(TRACKER_STORAGE_KEYS));
   const data = Object.fromEntries(
     Object.entries(TRACKER_STORAGE_KEYS).map(([name, storageKey]) => {
-      const storedValue = localStorage.getItem(storageKey);
+      const storedValue = storedValues[storageKey];
       if (storedValue === null) return [name, null];
 
       try {
@@ -46,8 +54,8 @@ export function createTrackerBackup(): TrackerBackup {
   };
 }
 
-export function downloadTrackerBackup() {
-  const backup = createTrackerBackup();
+export async function downloadTrackerBackup() {
+  const backup = await createTrackerBackup();
   const blob = new Blob([JSON.stringify(backup, null, 2)], {
     type: "application/json",
   });
@@ -59,7 +67,7 @@ export function downloadTrackerBackup() {
   URL.revokeObjectURL(url);
 }
 
-export function importTrackerBackup(contents: string) {
+export async function importTrackerBackup(contents: string) {
   let backup: unknown;
 
   try {
@@ -91,18 +99,24 @@ export function importTrackerBackup(contents: string) {
     throw new Error(`Backup is incomplete: missing ${missingFields.join(", ")}.`);
   }
 
-  Object.entries(TRACKER_STORAGE_KEYS).forEach(([name, storageKey]) => {
+  const storedValues = Object.fromEntries(Object.entries(TRACKER_STORAGE_KEYS).map(([name, storageKey]) => {
     if (!(name in data)) return;
     const value = data[name as keyof BackupData];
     if (value === null) {
-      localStorage.removeItem(storageKey);
-    } else {
-      localStorage.setItem(
-        storageKey,
-        typeof value === "string" && name === "selectedDate"
-          ? value
-          : JSON.stringify(value),
-      );
+      return [storageKey, null];
     }
-  });
+    return [
+      storageKey,
+      typeof value === "string" && name === "selectedDate"
+        ? value
+        : JSON.stringify(value),
+    ];
+  }).filter((entry): entry is [string, string | null] => Array.isArray(entry)));
+
+  await writeStorageValues(storedValues);
 }
+
+export const migrateTrackerStorageToIndexedDb = () =>
+  migrateStorageToIndexedDb(Object.values(TRACKER_STORAGE_KEYS));
+
+export { getTrackerStorageBackend };

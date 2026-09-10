@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { 
   Plus, 
-  Search as SearchIcon, 
   Trash2, 
   Edit3, 
+  Utensils,
   UtensilsCrossed, 
-  Filter, 
   Calendar, 
   X, 
   Check, 
@@ -47,8 +46,6 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({
     foodCategories,
   } = useTracker();
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedMealFilter, setSelectedMealFilter] = useState<string>("All");
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [jsonInput, setJsonInput] = useState("");
@@ -68,7 +65,6 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({
   const [formFiber, setFormFiber] = useState<NumericDraft>("");
   const [formWater, setFormWater] = useState<NumericDraft>("");
   const [formWalk, setFormWalk] = useState<NumericDraft>("");
-  const [formNotes, setFormNotes] = useState("");
   const [formPrimaryIngredients, setFormPrimaryIngredients] = useState("");
   const [showFoodSuggestions, setShowFoodSuggestions] = useState(false);
 
@@ -146,7 +142,6 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({
     setFormFiber("");
     setFormWater("");
     setFormWalk("");
-    setFormNotes("");
     setShowAddForm(true);
   };
 
@@ -195,7 +190,6 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({
         fiber: Number(formFiber),
         waterMl: Number(formWater),
         walkKm: Number(formWalk),
-        notes: formNotes,
       });
       setEditingId(null);
     } else {
@@ -214,7 +208,6 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({
         fiber: Number(formFiber),
         waterMl: Number(formWater),
         walkKm: Number(formWalk),
-        notes: formNotes,
       });
       if (!added) return;
     }
@@ -222,7 +215,6 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({
     // Reset form
     setFormFoodName("");
     setFormPrimaryIngredients("");
-    setFormNotes("");
     setFormQuantity("");
     setFormCalories("");
     setFormProtein("");
@@ -250,7 +242,6 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({
     setFormFiber(entry.fiber);
     setFormWater(entry.waterMl || 0);
     setFormWalk(entry.walkKm || 0);
-    setFormNotes(entry.notes || "");
     setShowAddForm(true);
   };
 
@@ -330,17 +321,7 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({
     }
   };
 
-  // Filter logs by date, search query and meal
-  const filteredLogs = sortDailyLogs(dailyLogs.filter((log) => {
-    const dateMatch = log.date === selectedDate;
-    const searchMatch =
-      log.foodItem.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      log.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (log.primaryIngredients || []).some((ingredient) => ingredient.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (log.notes && log.notes.toLowerCase().includes(searchQuery.toLowerCase()));
-    const mealMatch = selectedMealFilter === "All" || log.meal === selectedMealFilter;
-    return dateMatch && searchMatch && mealMatch;
-  }));
+  const filteredLogs = sortDailyLogs(dailyLogs.filter((log) => log.date === selectedDate));
 
   // Calculate totals
   const totalCal = filteredLogs.reduce((acc, l) => acc + (l.calories || 0), 0);
@@ -567,20 +548,8 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({
               />
             </div>
 
-            {/* Notes */}
-            <div className="col-span-2">
-              <label className="text-slate-500 block mb-1">Notes / Portions</label>
-              <input
-                type="text"
-                value={formNotes}
-                onChange={(e) => setFormNotes(e.target.value)}
-                placeholder="e.g. 2 medium dosas, 250g reported"
-                className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-2.5"
-              />
-            </div>
-
             {/* Primary ingredients */}
-            <div className="col-span-2 sm:col-span-3 lg:col-span-4">
+            <div className="col-span-2 sm:col-span-3 lg:col-span-6">
               <label className="text-slate-500 block mb-1">Primary ingredients</label>
               <input
                 type="text"
@@ -617,51 +586,16 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({
         </div>
       )}
 
-      {/* Filter and Search Bar */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs shadow-sm">
-        
-        {/* Search and Add Food */}
-        <div className="flex w-full items-center gap-2 sm:w-auto">
-          <div className="relative min-w-0 flex-1 sm:w-64 sm:flex-none">
-            <SearchIcon className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search food item, category or notes..."
-              className="w-full bg-slate-50 border border-slate-200/80 pl-9 pr-3 py-2 text-slate-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-            />
-          </div>
-
-          {/* Add Food Entry Button */}
-          <button
-            onClick={openBlankFoodForm}
-            className="flex shrink-0 items-center gap-1.5 whitespace-nowrap bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs px-3.5 py-2 rounded-xl transition-colors border border-slate-200"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Food</span>
-          </button>
-        </div>
-
-        {/* Meal Filter Chips */}
-        <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 scrollbar-none">
-          <Filter className="w-3.5 h-3.5 text-slate-400 mr-1 shrink-0" />
-          {["All", ...MEAL_TYPES].map((m) => (
-            <button
-              key={m}
-              onClick={() => setSelectedMealFilter(m)}
-              className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition-colors ${
-                selectedMealFilter === m
-                  ? "bg-blue-50 text-blue-700 font-semibold border border-blue-200"
-                  : "bg-slate-100/80 text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              {m}
-            </button>
-          ))}
-        </div>
-
-      </div>
+      <button
+        type="button"
+        onClick={openBlankFoodForm}
+        aria-label="Add food now"
+        title="Add food now"
+        className="fixed bottom-5 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full border border-blue-500 bg-blue-600 text-white shadow-xl shadow-blue-950/20 transition hover:bg-blue-700 hover:shadow-2xl focus:outline-none focus:ring-4 focus:ring-blue-200 sm:bottom-6 sm:right-6"
+      >
+        <Utensils className="h-5 w-5" />
+        <span className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-emerald-500 text-sm font-black leading-none">+</span>
+      </button>
 
       {/* Food Log Table (Direct Spreadsheet Match) */}
       <div className="isolate bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-sm">

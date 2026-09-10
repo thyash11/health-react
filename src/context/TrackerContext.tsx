@@ -24,6 +24,7 @@ import { sortDailyLogs } from "../utils/logSorting";
 import { createDefaultEatMePlan } from "../data/defaultEatMePlan";
 import { EatMeFoodMapping, EatMePlan, EatMeRawTick } from "../types/eatMe";
 import { getLatestWeightGoalRevisionDate, resolveTargetsForDate, upsertTargetRevision } from "../utils/targetHistory";
+import { getTrackerStorageBackend, persistStorageValue, readStorageValues } from "../utils/browserStorage";
 
 interface TrackerContextType {
   selectedDate: string;
@@ -81,16 +82,22 @@ const STORAGE_KEYS = {
   TARGET_HISTORY: "health_tracker_target_history_v1",
 };
 
-const loadJson = <T,>(key: string, fallback: T): T => {
+const parseStoredJson = <T,>(storedValue: string | null | undefined, fallback: T): T => {
   try {
-    const saved = localStorage.getItem(key);
-    return saved ? JSON.parse(saved) as T : fallback;
+    return storedValue ? JSON.parse(storedValue) as T : fallback;
   } catch {
     return fallback;
   }
 };
 
+const loadJson = <T,>(key: string, fallback: T): T => (
+  getTrackerStorageBackend() === "indexeddb"
+    ? fallback
+    : parseStoredJson(localStorage.getItem(key), fallback)
+);
+
 const loadFoodCategories = () => {
+  if (getTrackerStorageBackend() === "indexeddb") return [...FOOD_CATEGORIES];
   const saved = localStorage.getItem(STORAGE_KEYS.FOOD_CATEGORIES);
   if (saved) {
     const parsed = JSON.parse(saved);
@@ -111,6 +118,8 @@ const loadFoodCategories = () => {
   return [...discovered];
 };
 
+const currentLocalDate = () => new Date().toLocaleDateString("en-CA");
+
 const earliestTrackedDate = () => {
   const dates: string[] = [];
   [STORAGE_KEYS.DAILY_LOGS, STORAGE_KEYS.HEALTH_METRICS].forEach((key) => {
@@ -119,13 +128,14 @@ const earliestTrackedDate = () => {
       if (typeof record.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(record.date)) dates.push(record.date);
     });
   });
-  return dates.sort()[0] || new Date().toLocaleDateString("en-CA");
+  return dates.sort()[0] || currentLocalDate();
 };
 
 export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [selectedDate, setSelectedDateState] = useState<string>(() => {
-    return localStorage.getItem(STORAGE_KEYS.SELECTED_DATE) || new Date().toLocaleDateString("en-CA");
-  });
+  const [usesIndexedDb] = useState(() => getTrackerStorageBackend() === "indexeddb");
+  const [storageReady, setStorageReady] = useState(!usesIndexedDb);
+  const [storageLoadError, setStorageLoadError] = useState<string>();
+  const [selectedDate, setSelectedDateState] = useState<string>(currentLocalDate);
 
   const [targets, setTargets] = useState<PersonalTargets>(() => {
     const saved = loadJson<Partial<PersonalTargets>>(STORAGE_KEYS.TARGETS, {});
@@ -144,83 +154,170 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
   });
 
   const [profile, setProfile] = useState<UserProfile>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.PROFILE);
-    return saved ? JSON.parse(saved) : initialProfile;
+    return loadJson(STORAGE_KEYS.PROFILE, initialProfile);
   });
 
   const [foodLibrary, setFoodLibrary] = useState<FoodItem[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.FOOD_LIBRARY);
-    return saved ? JSON.parse(saved) : initialFoodLibrary;
+    return loadJson(STORAGE_KEYS.FOOD_LIBRARY, initialFoodLibrary);
   });
 
   const [dailyLogs, setDailyLogs] = useState<DailyLogEntry[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.DAILY_LOGS);
-    return sortDailyLogs(saved ? JSON.parse(saved) : initialDailyLogs);
+    return sortDailyLogs(loadJson(STORAGE_KEYS.DAILY_LOGS, initialDailyLogs));
   });
 
   const [healthMetrics, setHealthMetrics] = useState<HealthMetric[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.HEALTH_METRICS);
-    return saved ? JSON.parse(saved) : initialHealthMetrics;
+    return loadJson(STORAGE_KEYS.HEALTH_METRICS, initialHealthMetrics);
   });
 
   const [labTests, setLabTests] = useState<LabTestRecord[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.LAB_TESTS);
-    return saved ? JSON.parse(saved) : initialLabTests;
+    return loadJson(STORAGE_KEYS.LAB_TESTS, initialLabTests);
   });
 
   const [periodicChecks] = useState<PeriodicCheckItem[]>(initialPeriodicChecks);
   const [foodCategories, setFoodCategories] = useState<string[]>(loadFoodCategories);
-  const [eatMePlan] = useState<EatMePlan>(() => loadJson(STORAGE_KEYS.EAT_ME_PLAN, createDefaultEatMePlan()));
-  const [eatMeMappings] = useState<EatMeFoodMapping[]>(() => loadJson(STORAGE_KEYS.EAT_ME_MAPPINGS, []));
+  const [eatMePlan, setEatMePlan] = useState<EatMePlan>(() => loadJson(STORAGE_KEYS.EAT_ME_PLAN, createDefaultEatMePlan()));
+  const [eatMeMappings, setEatMeMappings] = useState<EatMeFoodMapping[]>(() => loadJson(STORAGE_KEYS.EAT_ME_MAPPINGS, []));
   const [eatMeRawTicks, setEatMeRawTicks] = useState<EatMeRawTick[]>(() => loadJson(STORAGE_KEYS.EAT_ME_RAW_TICKS, []));
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.SELECTED_DATE, selectedDate);
-  }, [selectedDate]);
+    if (!usesIndexedDb) return;
+    let cancelled = false;
+
+    const hydrateFromIndexedDb = async () => {
+      try {
+        const stored = await readStorageValues(Object.values(STORAGE_KEYS));
+        const nextTargets = {
+          ...initialTargets,
+          ...parseStoredJson<Partial<PersonalTargets>>(stored[STORAGE_KEYS.TARGETS], {}),
+        };
+        const nextFoodLibrary = parseStoredJson<FoodItem[]>(stored[STORAGE_KEYS.FOOD_LIBRARY], initialFoodLibrary);
+        const nextDailyLogs = sortDailyLogs(
+          parseStoredJson<DailyLogEntry[]>(stored[STORAGE_KEYS.DAILY_LOGS], initialDailyLogs),
+        );
+        const nextHealthMetrics = parseStoredJson<HealthMetric[]>(
+          stored[STORAGE_KEYS.HEALTH_METRICS],
+          initialHealthMetrics,
+        );
+        const storedCategories = parseStoredJson<unknown>(stored[STORAGE_KEYS.FOOD_CATEGORIES], null);
+        const discoveredCategories = new Set<string>(FOOD_CATEGORIES);
+        [...nextFoodLibrary, ...nextDailyLogs].forEach((record) => {
+          if (typeof record.category === "string") discoveredCategories.add(record.category);
+        });
+        const nextFoodCategories = Array.isArray(storedCategories) &&
+          storedCategories.every((value) => typeof value === "string")
+          ? storedCategories
+          : [...discoveredCategories];
+        const storedTargetHistory = parseStoredJson<TargetHistoryEntry[]>(stored[STORAGE_KEYS.TARGET_HISTORY], []);
+        const validTargetHistory = storedTargetHistory
+          .filter((entry) => /^\d{4}-\d{2}-\d{2}$/.test(entry?.effectiveDate) && typeof entry?.targets === "object")
+          .map((entry) => ({ ...entry, targets: { ...initialTargets, ...entry.targets } }))
+          .sort((a, b) => a.effectiveDate.localeCompare(b.effectiveDate));
+        const earliestDate = [...nextDailyLogs, ...nextHealthMetrics]
+          .map((record) => record.date)
+          .filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date))
+          .sort()[0] || currentLocalDate();
+
+        if (cancelled) return;
+        setTargets(nextTargets);
+        setTargetHistory(validTargetHistory.length > 0
+          ? validTargetHistory
+          : [{ effectiveDate: earliestDate, targets: nextTargets }]);
+        setProfile(parseStoredJson<UserProfile>(stored[STORAGE_KEYS.PROFILE], initialProfile));
+        setFoodLibrary(nextFoodLibrary);
+        setDailyLogs(nextDailyLogs);
+        setHealthMetrics(nextHealthMetrics);
+        setLabTests(parseStoredJson<LabTestRecord[]>(stored[STORAGE_KEYS.LAB_TESTS], initialLabTests));
+        setFoodCategories(nextFoodCategories);
+        setEatMePlan(parseStoredJson<EatMePlan>(stored[STORAGE_KEYS.EAT_ME_PLAN], createDefaultEatMePlan()));
+        setEatMeMappings(parseStoredJson<EatMeFoodMapping[]>(stored[STORAGE_KEYS.EAT_ME_MAPPINGS], []));
+        setEatMeRawTicks(parseStoredJson<EatMeRawTick[]>(stored[STORAGE_KEYS.EAT_ME_RAW_TICKS], []));
+        setStorageReady(true);
+      } catch (error) {
+        if (!cancelled) {
+          setStorageLoadError(error instanceof Error ? error.message : "Could not load IndexedDB data.");
+        }
+      }
+    };
+
+    void hydrateFromIndexedDb();
+    return () => {
+      cancelled = true;
+    };
+  }, [usesIndexedDb]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.TARGETS, JSON.stringify(targets));
-  }, [targets]);
+    if (!storageReady) return;
+    persistStorageValue(STORAGE_KEYS.SELECTED_DATE, selectedDate);
+  }, [selectedDate, storageReady]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.TARGET_HISTORY, JSON.stringify(targetHistory));
-  }, [targetHistory]);
+    let lastVisibleDate = currentLocalDate();
+    const syncDateAfterDayChange = () => {
+      if (document.visibilityState !== "visible") return;
+      const today = currentLocalDate();
+      if (today === lastVisibleDate) return;
+      lastVisibleDate = today;
+      setSelectedDateState(today);
+    };
+
+    document.addEventListener("visibilitychange", syncDateAfterDayChange);
+    return () => document.removeEventListener("visibilitychange", syncDateAfterDayChange);
+  }, []);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile));
-  }, [profile]);
+    if (!storageReady) return;
+    persistStorageValue(STORAGE_KEYS.TARGETS, JSON.stringify(targets));
+  }, [storageReady, targets]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.FOOD_LIBRARY, JSON.stringify(foodLibrary));
-  }, [foodLibrary]);
+    if (!storageReady) return;
+    persistStorageValue(STORAGE_KEYS.TARGET_HISTORY, JSON.stringify(targetHistory));
+  }, [storageReady, targetHistory]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.DAILY_LOGS, JSON.stringify(dailyLogs));
-  }, [dailyLogs]);
+    if (!storageReady) return;
+    persistStorageValue(STORAGE_KEYS.PROFILE, JSON.stringify(profile));
+  }, [profile, storageReady]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.HEALTH_METRICS, JSON.stringify(healthMetrics));
-  }, [healthMetrics]);
+    if (!storageReady) return;
+    persistStorageValue(STORAGE_KEYS.FOOD_LIBRARY, JSON.stringify(foodLibrary));
+  }, [foodLibrary, storageReady]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.LAB_TESTS, JSON.stringify(labTests));
-  }, [labTests]);
+    if (!storageReady) return;
+    persistStorageValue(STORAGE_KEYS.DAILY_LOGS, JSON.stringify(dailyLogs));
+  }, [dailyLogs, storageReady]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.FOOD_CATEGORIES, JSON.stringify(foodCategories));
-  }, [foodCategories]);
+    if (!storageReady) return;
+    persistStorageValue(STORAGE_KEYS.HEALTH_METRICS, JSON.stringify(healthMetrics));
+  }, [healthMetrics, storageReady]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.EAT_ME_PLAN, JSON.stringify(eatMePlan));
-  }, [eatMePlan]);
+    if (!storageReady) return;
+    persistStorageValue(STORAGE_KEYS.LAB_TESTS, JSON.stringify(labTests));
+  }, [labTests, storageReady]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.EAT_ME_MAPPINGS, JSON.stringify(eatMeMappings));
-  }, [eatMeMappings]);
+    if (!storageReady) return;
+    persistStorageValue(STORAGE_KEYS.FOOD_CATEGORIES, JSON.stringify(foodCategories));
+  }, [foodCategories, storageReady]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.EAT_ME_RAW_TICKS, JSON.stringify(eatMeRawTicks));
-  }, [eatMeRawTicks]);
+    if (!storageReady) return;
+    persistStorageValue(STORAGE_KEYS.EAT_ME_PLAN, JSON.stringify(eatMePlan));
+  }, [eatMePlan, storageReady]);
+
+  useEffect(() => {
+    if (!storageReady) return;
+    persistStorageValue(STORAGE_KEYS.EAT_ME_MAPPINGS, JSON.stringify(eatMeMappings));
+  }, [eatMeMappings, storageReady]);
+
+  useEffect(() => {
+    if (!storageReady) return;
+    persistStorageValue(STORAGE_KEYS.EAT_ME_RAW_TICKS, JSON.stringify(eatMeRawTicks));
+  }, [eatMeRawTicks, storageReady]);
 
   const setSelectedDate = (date: string) => {
     setSelectedDateState(date);
@@ -399,6 +496,26 @@ export const TrackerProvider: React.FC<{ children: React.ReactNode }> = ({ child
         : previous.filter((item) => item !== existing);
     });
   };
+
+  if (storageLoadError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6 text-center">
+        <div className="max-w-md rounded-2xl border border-red-200 bg-white p-6 shadow-sm">
+          <h1 className="text-lg font-bold text-slate-900">Could not open NutriMetric data</h1>
+          <p className="mt-2 text-sm text-red-700">{storageLoadError}</p>
+          <p className="mt-3 text-xs leading-5 text-slate-500">Close other NutriMetric windows and reload the app. Your migrated data has not been reset.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!storageReady) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6 text-sm font-medium text-slate-600">
+        Opening NutriMetric data…
+      </div>
+    );
+  }
 
   return (
     <TrackerContext.Provider

@@ -229,7 +229,7 @@ function MainApp() {
           aria-label="Open Eat Me Raw"
           title="Eat Me Raw"
           className={`fixed right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full border border-emerald-500 bg-emerald-600 text-white shadow-xl shadow-emerald-950/20 transition hover:bg-emerald-700 hover:shadow-2xl focus:outline-none focus:ring-4 focus:ring-emerald-200 sm:right-6 ${
-            activeTab === "dashboard" ? "bottom-[104px] sm:bottom-28" : "bottom-5 sm:bottom-6"
+            activeTab === "dashboard" || activeTab === "foodlog" ? "bottom-[104px] sm:bottom-28" : "bottom-5 sm:bottom-6"
           }`}
         >
           <ListChecks className="h-6 w-6" />
