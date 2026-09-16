@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { 
   Plus, 
   Trash2, 
@@ -10,6 +10,7 @@ import {
   Check, 
   Info,
   ChevronDown,
+  Upload,
 } from "lucide-react";
 import { useTracker } from "../../context/TrackerContext";
 import { DailyLogEntry, MealType, FoodCategory, FoodItem } from "../../types";
@@ -19,6 +20,7 @@ import { TimePicker } from "../TimePicker";
 import { sortDailyLogs } from "../../utils/logSorting";
 import { cleanPrimaryIngredients, parsePrimaryIngredients } from "../../utils/primaryIngredients";
 import { useBrowserBackDismiss } from "../../hooks/useBrowserBackDismiss";
+import { parseFoodLibraryJson } from "../../utils/foodLibraryImport";
 
 interface DailyFoodLogViewProps {
   prefillFood?: FoodItem | null;
@@ -40,6 +42,7 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({
     dailyLogs, 
     addLogEntry, 
     addBatchLogEntries,
+    addBatchFoodItems,
     updateLogEntry, 
     deleteLogEntry, 
     foodLibrary,
@@ -51,6 +54,8 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({
   const [jsonInput, setJsonInput] = useState("");
   const [jsonMessage, setJsonMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
   const [showJsonImport, setShowJsonImport] = useState(false);
+  const foodLibraryUploadRef = useRef<HTMLInputElement>(null);
+  const [foodLibraryUploadMessage, setFoodLibraryUploadMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
 
   // Form State
   const [formMeal, setFormMeal] = useState<MealType>("Breakfast");
@@ -142,6 +147,7 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({
     setFormFiber("");
     setFormWater("");
     setFormWalk("");
+    setFoodLibraryUploadMessage(null);
     setShowAddForm(true);
   };
 
@@ -242,7 +248,28 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({
     setFormFiber(entry.fiber);
     setFormWater(entry.waterMl || 0);
     setFormWalk(entry.walkKm || 0);
+    setFoodLibraryUploadMessage(null);
     setShowAddForm(true);
+  };
+
+  const handleFoodLibraryUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    try {
+      const foods = parseFoodLibraryJson(await file.text(), foodLibrary, foodCategories);
+      if (!addBatchFoodItems(foods)) return;
+      setFoodLibraryUploadMessage({
+        type: "success",
+        text: `Imported ${foods.length} Food Library ${foods.length === 1 ? "item" : "items"}. You can now search for them below.`,
+      });
+    } catch (error) {
+      setFoodLibraryUploadMessage({
+        type: "error",
+        text: error instanceof Error ? error.message : "Could not import this Food Library JSON file.",
+      });
+    }
   };
 
   const handleJsonImport = () => {
@@ -356,6 +383,22 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({
               <span className="hidden text-xs text-slate-500 sm:inline">Auto-calculates from food library presets</span>
               <button
                 type="button"
+                onClick={() => foodLibraryUploadRef.current?.click()}
+                aria-label="Upload Food Library JSON"
+                title="Upload Food Library JSON"
+                className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-blue-50 hover:text-blue-700"
+              >
+                <Upload className="h-4 w-4" />
+              </button>
+              <input
+                ref={foodLibraryUploadRef}
+                type="file"
+                accept="application/json,.json"
+                onChange={handleFoodLibraryUpload}
+                className="hidden"
+              />
+              <button
+                type="button"
                 onClick={() => {
                   setShowAddForm(false);
                   setEditingId(null);
@@ -367,6 +410,19 @@ export const DailyFoodLogView: React.FC<DailyFoodLogViewProps> = ({
               </button>
             </div>
           </div>
+
+          {foodLibraryUploadMessage && (
+            <div
+              role={foodLibraryUploadMessage.type === "error" ? "alert" : "status"}
+              className={`rounded-xl border px-3 py-2 text-xs ${
+                foodLibraryUploadMessage.type === "success"
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                  : "border-rose-200 bg-rose-50 text-rose-700"
+              }`}
+            >
+              {foodLibraryUploadMessage.text}
+            </div>
+          )}
 
           {/* Form Fields Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">

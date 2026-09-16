@@ -10,6 +10,8 @@ import {
   AlertTriangle, 
   CheckCircle2, 
   Copy,
+  Cookie,
+  Droplets,
   Utensils,
 } from "lucide-react";
 import { useTracker } from "../../context/TrackerContext";
@@ -62,7 +64,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     target > 0 ? Math.round((value / target) * 100) : 0;
   const calPct = percentOf(summary.totalCalories, dayTargets.dailyCalories);
   const proteinPct = percentOf(summary.totalProtein, dayTargets.proteinGrams);
+  const carbsPct = percentOf(summary.totalCarbs, dayTargets.carbsGrams);
   const fiberPct = percentOf(summary.totalFiber, dayTargets.fiberGrams);
+  const waterPct = percentOf(summary.totalWater, dayTargets.waterMl);
   const walkPct = percentOf(summary.totalWalkKm, dayTargets.walkKm);
   const fatTargetGrams = dayTargets.fatGrams > 0
     ? dayTargets.fatGrams
@@ -71,6 +75,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       : 0;
   const fatPct = percentOf(summary.totalFat, fatTargetGrams);
   const fatOverMax = fatTargetGrams > 0 && summary.totalFat > fatTargetGrams;
+  const formatWater = (milliliters: number) => milliliters >= 1000
+    ? `${Number((milliliters / 1000).toFixed(1))}L`
+    : `${milliliters}ml`;
   const weightHistory = getWeightMetricsChronological(healthMetrics).filter((metric) => metric.date <= selectedDate);
   const latestWeightMetric = weightHistory.length > 0 ? weightHistory[weightHistory.length - 1] : undefined;
   const startingWeight = weightHistory.length > 0 ? weightHistory[0].weightKg : dayTargets.currentWeightKg;
@@ -165,7 +172,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     <div className="space-y-6 pb-12">
       
       {/* Target Metrics Grid Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
         
         {/* Calories Card */}
         <div className={`p-4 rounded-2xl border shadow-sm ${calPct > 105 ? "bg-rose-50/50 border-rose-200" : "bg-white border-slate-200/80"}`}>
@@ -206,6 +213,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
           <span className="text-[11px] font-semibold mt-1.5 inline-block text-emerald-600">
             {proteinPct}% of target
+          </span>
+        </div>
+
+        {/* Carbohydrates Card */}
+        <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm">
+          <div className="flex items-center justify-between text-slate-500 mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider">Carbs</span>
+            <Cookie className="w-4 h-4 text-orange-500" />
+          </div>
+          <div className="flex items-baseline justify-between">
+            <span className="text-xl font-bold text-slate-900">{summary.totalCarbs}g</span>
+            <span className="text-xs text-slate-400">/ {dayTargets.carbsGrams}g</span>
+          </div>
+          <div className="mt-2.5 w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-orange-500 transition-all"
+              style={{ width: `${Math.min(100, carbsPct)}%` }}
+            />
+          </div>
+          <span className="text-[11px] font-semibold mt-1.5 inline-block text-orange-600">
+            {carbsPct}% of target
           </span>
         </div>
 
@@ -250,6 +278,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {fatTargetGrams <= 0
               ? "Set a calorie target"
               : `${fatPct}% of target`}
+          </span>
+        </div>
+
+        {/* Water Card */}
+        <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm">
+          <div className="flex items-center justify-between text-slate-500 mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider">Water</span>
+            <Droplets className="w-4 h-4 text-cyan-600" />
+          </div>
+          <div className="flex items-baseline justify-between">
+            <span className="text-xl font-bold text-slate-900">{formatWater(summary.totalWater)}</span>
+            <span className="text-xs text-slate-400">/ {formatWater(dayTargets.waterMl)}</span>
+          </div>
+          <div className="mt-2.5 w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-cyan-500 transition-all"
+              style={{ width: `${Math.min(100, waterPct)}%` }}
+            />
+          </div>
+          <span className="text-[11px] font-semibold mt-1.5 inline-block text-cyan-600">
+            {waterPct}% of target
           </span>
         </div>
 
